@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据库关联树形展示</title>
+    <link href="css/index.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <!-- 引入 ECharts 图表库 -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.4.2/echarts.min.js"></script>
+    <script>
+        // ECharts备用加载机制
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof echarts === 'undefined') {
+                console.log('主要CDN加载失败，尝试备用CDN...');
+                var script = document.createElement('script');
+                script.src = "https://cdn.staticfile.org/echarts/5.4.2/echarts.min.js";
+                script.onload = function() {
+                    console.log('备用CDN加载成功');
+                    if (typeof initializeCharts === 'function') {
+                        initializeCharts();
+                    }
+                };
+                script.onerror = function() {
+                    console.log('备用CDN加载失败，尝试本地文件...');
+                    var localScript = document.createElement('script');
+                    localScript.src = "js/libs/echarts.min.js";
+                    localScript.onload = function() {
+                        console.log('本地ECharts加载成功');
+                        if (typeof initializeCharts === 'function') {
+                            initializeCharts();
+                        }
+                    };
+                    localScript.onerror = function() {
+                        console.error('所有ECharts库加载失败，请检查网络连接');
+                        alert('图表库加载失败，请检查网络连接或刷新页面重试');
+                    };
+                    document.head.appendChild(localScript);
+                };
+                document.head.appendChild(script);
+            }
+        });
+    </script>
+    <!-- 引入API处理文件 -->
+    <script src="js/database-relation-api.js"></script>
+    <style>
+        body {
+            background-color: #202124;
+            margin: 0;
+            font-family: arial, sans-serif;
+            color: #e8eaed;
+        }
+        .header-container {
+            width: 100%;
+            padding: 8px 16px;
+            background-color: #303134;
+            position: relative;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: center;
+            gap: 12px;
+        }
+        .page-title {
+            white-space: nowrap;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        .input-area {
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: center;
+            flex-grow: 1;
+            gap: 8px;
+        }
+        .input-group {
+            display: flex;
+            align-items: center;
+            margin: 0;
+            flex-shrink: 1;
+        }
+        .input-group label {
+            white-space: nowrap;
+            margin-right: 4px;
+            font-size: 13px;
+            color: #aaa;
+        }
+        .input-field {
+            background-color: #303134;
+            border: 1px solid #5f6368;
+            border-radius: 4px;
+            padding: 4px 8px;
+            color: #e8eaed;
+            width: 140px;
+            height: 24px;
+            font-size: 13px;
+        }
+        .select-field {
+            background-color: #303134;
+            border: 1px solid #5f6368;
+            border-radius: 4px;
+            padding: 4px 8px;
+            color: #e8eaed;
+            width: 90px;
+            height: 24px;
+            font-size: 13px;
+        }
+        .input-field:focus, .select-field:focus {
+            outline: none;
+            border-color: #8ab4f8;
+        }
+        .button-group {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .button {
+            padding: 4px 10px;
+            font-size: 13px;
+            height: 30px;
+        }
+        #graph-container {
+            width: 100%;
+            height: 0;
+            transition: height 0.5s ease;
+            margin-top: 30px;
+            background-color: #303134;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .show-graph {
+            height: 70vh !important;
+        }
+        .loading {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            display: none;
+            color: #8ab4f8;
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(138, 180, 248, 0.3);
+            border-radius: 50%;
+            border-top-color: #8ab4f8;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .node-details {
+            background-color: #303134;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .node-details h3 {
+            margin-top: 0;
+            color: #8ab4f8;
+        }
+        .config-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .config-modal-content {
+            background-color: #303134;
+            padding: 24px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 600px;
+        }
+        .config-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .config-modal-title {
+            font-size: 18px;
+            font-weight: 500;
+        }
+        .config-modal-close {
+            background: none;
+            border: none;
+            color: #e8eaed;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        .config-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .config-tabs {
+            display: flex;
+            border-bottom: 1px solid #5f6368;
+            margin-bottom: 16px;
+        }
+        .config-tab {
+            padding: 8px 16px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+        .config-tab.active {
+            border-bottom-color: #8ab4f8;
+            color: #8ab4f8;
+        }
+        .config-panel {
+            display: none;
+        }
+        .config-panel.active {
+            display: block;
+        }
+        table.data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+        table.data-table th, table.data-table td {
+            border: 1px solid #5f6368;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        table.data-table th {
+            background-color: #3c4043;
+        }
+        table.data-table tr:nth-child(even) {
+            background-color: #35363a;
+        }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen">
+        <div class="header-container">
+            <h1 class="page-title">数据库关联树形展示</h1>
+            
+            <div class="input-area">
+                <div class="input-group">
+                    <label for="dbEnvironment">环境:</label>
+                    <select id="dbEnvironment" class="select-field">
+                        <option value="test">测试</option>
+                        <option value="daily">日常</option>
+                        <option value="pre">预发</option>
+                    </select>
+                </div>
+                
+                <div class="input-group">
+                    <label for="dbName">数据库:</label>
+                    <input type="text" id="dbName" class="input-field" placeholder="数据库名称">
+                </div>
+                
+                <div class="input-group">
+                    <label for="tableCode">表单编码:</label>
+                    <input type="text" id="tableCode" class="input-field" placeholder="表单编码">
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button id="configButton" class="button bg-gray-600 hover:bg-gray-500">配置</button>
+                <button id="searchButton" class="button">搜索</button>
+            </div>
+            
+            <div class="loading" id="loadingIndicator">
+                <span class="loading-spinner"></span> 正在生成树形关系图...
+            </div>
+        </div>
+        
+        <!-- 图谱展示容器 -->
+        <div id="graph-container" class="mx-auto show-graph" style="max-width: 98%; min-height: 80vh; margin-top: 12px;">
+            <div id="zoom-hint" style="position: absolute; top: 70px; left: 20px; background-color: rgba(0,0,0,0.6); padding: 8px 12px; border-radius: 4px; color: #fff; font-size: 12px; z-index: 100; display: none;">
+                <p style="margin: 0 0 4px 0;"><b>操作提示：</b></p>
+                <p style="margin: 0 0 2px 0;">· 鼠标滚轮：缩放图表</p>
+                <p style="margin: 0 0 2px 0;">· 按住左键拖动：平移图表</p>
+                <p style="margin: 0 0 0 0;">· 点击节点：显示详情</p>
+            </div>
+        </div>
+        
+        <!-- 节点详情展示 -->
+        <div class="node-details" id="nodeDetails">
+            <h3>节点详情</h3>
+            <div id="nodeDetailContent"></div>
+        </div>
+        
+        <!-- 数据库配置模态框 -->
+        <div class="config-modal" id="configModal">
+            <div class="config-modal-content">
+                <div class="config-modal-header">
+                    <span class="config-modal-title">数据库配置</span>
+                    <button class="config-modal-close" id="closeConfigModal">&times;</button>
+                </div>
+                <div class="config-tabs">
+                    <div class="config-tab active" data-tab="test">测试环境</div>
+                    <div class="config-tab" data-tab="daily">日常环境</div>
+                    <div class="config-tab" data-tab="pre">预发环境</div>
+                </div>
+                <div class="config-panels">
+                    <div class="config-panel active" id="test-panel">
+                        <div class="config-form">
+                            <div class="input-group">
+                                <label>主机：</label>
+                                <input type="text" id="test-host" class="input-field" placeholder="例如: localhost">
+                            </div>
+                            <div class="input-group">
+                                <label>端口：</label>
+                                <input type="text" id="test-port" class="input-field" placeholder="例如: 3306">
+                            </div>
+                            <div class="input-group">
+                                <label>用户名：</label>
+                                <input type="text" id="test-username" class="input-field" placeholder="数据库用户名">
+                            </div>
+                            <div class="input-group">
+                                <label>密码：</label>
+                                <input type="password" id="test-password" class="input-field" placeholder="数据库密码">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="config-panel" id="daily-panel">
+                        <div class="config-form">
+                            <div class="input-group">
+                                <label>主机：</label>
+                                <input type="text" id="daily-host" class="input-field" placeholder="例如: localhost">
+                            </div>
+                            <div class="input-group">
+                                <label>端口：</label>
+                                <input type="text" id="daily-port" class="input-field" placeholder="例如: 3306">
+                            </div>
+                            <div class="input-group">
+                                <label>用户名：</label>
+                                <input type="text" id="daily-username" class="input-field" placeholder="数据库用户名">
+                            </div>
+                            <div class="input-group">
+                                <label>密码：</label>
+                                <input type="password" id="daily-password" class="input-field" placeholder="数据库密码">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="config-panel" id="pre-panel">
+                        <div class="config-form">
+                            <div class="input-group">
+                                <label>主机：</label>
+                                <input type="text" id="pre-host" class="input-field" placeholder="例如: localhost">
+                            </div>
+                            <div class="input-group">
+                                <label>端口：</label>
+                                <input type="text" id="pre-port" class="input-field" placeholder="例如: 3306">
+                            </div>
+                            <div class="input-group">
+                                <label>用户名：</label>
+                                <input type="text" id="pre-username" class="input-field" placeholder="数据库用户名">
+                            </div>
+                            <div class="input-group">
+                                <label>密码：</label>
+                                <input type="password" id="pre-password" class="input-field" placeholder="数据库密码">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end mt-4">
+                    <button id="saveConfigButton" class="button">保存配置</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/database-relation.js"></script>
+</body>
+</html> 
