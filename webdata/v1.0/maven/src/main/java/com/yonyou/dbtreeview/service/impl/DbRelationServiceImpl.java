@@ -245,10 +245,10 @@ public class DbRelationServiceImpl implements DbRelationService {
                         itemsNode.setAttribute("cBillNo", billNo);
                         itemsNode.setAttribute("groupId", groupId);
                     }
-                    groupNode.addChild(itemsNode);
+//                    groupNode.addChild(itemsNode);
                     
                     // 添加实际的billitem_base子节点
-                    addBillItemNodes(conn, itemsNode, billId, ytenant_id);
+                    addBillItemNodes(conn, itemsNode, billId, ytenant_id, groupNode);
                 }
             }
         }
@@ -257,7 +257,7 @@ public class DbRelationServiceImpl implements DbRelationService {
     /**
      * 添加billitem_base子节点
      */
-    private void addBillItemNodes(Connection conn, DbTreeNode parentNode, String billId, String ytenant_id) throws SQLException {
+    private void addBillItemNodes(Connection conn, DbTreeNode parentNode, String billId, String ytenant_id,DbTreeNode groupNode ) throws SQLException {
         String sql = "SELECT * FROM billitem_base WHERE iBillId = ? AND iBillTplGroupId = ? AND tenant_id = ?";
         
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -266,6 +266,7 @@ public class DbRelationServiceImpl implements DbRelationService {
             stmt.setString(3, ytenant_id);
             
             try (ResultSet rs = stmt.executeQuery()) {
+                boolean isExist = false;
                 while (rs.next()) {
                     DbTreeNode itemNode = new DbTreeNode("billitem_base", rs.getString("id"));
                     itemNode.setAttribute("cName", rs.getString("cName"));
@@ -273,6 +274,10 @@ public class DbRelationServiceImpl implements DbRelationService {
                     
                     // 添加子节点
                     parentNode.addChild(itemNode);
+                    isExist = true;
+                }
+                if (isExist){
+                    groupNode.addChild(parentNode);
                 }
             }
         }
