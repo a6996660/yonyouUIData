@@ -265,12 +265,12 @@ function renderGraph(data) {
         const treeMetrics = calculateTreeMetrics(data);
         const nodeSize = treeMetrics.nodeCount > 100 ? 7 : 10;
         
-        // 计算容器高度 - 至少80vh，但如果节点很多，则增加高度
-        let containerHeight = '80vh';
+        // 计算容器高度 - 至少90vh，但如果节点很多，则增加高度
+        let containerHeight = '90vh';
         if (treeMetrics.nodeCount > 200) {
-            containerHeight = '90vh';
+            containerHeight = '95vh';
         } else if (treeMetrics.maxDepth > 7 || treeMetrics.maxChildren > 15) {
-            containerHeight = '85vh';
+            containerHeight = '92vh';
         }
         
         // 动态设置容器高度
@@ -335,7 +335,7 @@ function renderGraph(data) {
                     top: '8%',
                     bottom: '8%',
                     left: '5%',
-                    right: '15%',
+                    right: '20%',
                     layout: 'orthogonal',
                     orient: 'LR',  // 从左到右水平布局
                     symbol: 'emptyCircle',
@@ -357,11 +357,18 @@ function renderGraph(data) {
                         align: 'left',
                         fontSize: 12,
                         color: '#e8eaed',
-                        distance: 8,
+                        distance: 10, // 增加与节点的距离
                         formatter: function(params) {
-                            // 如果文本过长，截断并添加省略号
-                            const text = params.name;
-                            return text.length > 20 ? text.substring(0, 18) + '...' : text;
+                            // 完整显示文本，不再截断
+                            return params.name;
+                        },
+                        rich: {
+                            // 添加富文本配置，确保对齐
+                            name: {
+                                align: 'left',
+                                padding: [0, 15, 0, 0],
+                                width: 'auto'
+                            }
                         }
                     },
                     leaves: {
@@ -371,7 +378,12 @@ function renderGraph(data) {
                             verticalAlign: 'middle',
                             align: 'left',
                             fontSize: 11,
-                            color: '#d0d0d0'
+                            color: '#d0d0d0',
+                            distance: 10, // 增加与节点的距离
+                            formatter: function(params) {
+                                // 叶子节点也完整显示文本
+                                return params.name;
+                            }
                         }
                     },
                     expandAndCollapse: true,
@@ -379,19 +391,19 @@ function renderGraph(data) {
                     animationDurationUpdate: 750,
                     lineStyle: {
                         color: '#5f6368',
-                        width: 1,
-                        curveness: treeMetrics.nodeCount > 100 ? 0.3 : 0.5 // 节点多时降低曲率
+                        width: 1.2, // 增加线条宽度
+                        curveness: treeMetrics.nodeCount > 100 ? 0.4 : 0.6 // 增加曲率
                     },
                     itemStyle: {
-                        borderWidth: 1
+                        borderWidth: 1.2 // 增加边框宽度
                     },
                     // 使用基于树结构分析的布局参数
                     nodeGap: treeMetrics.recommendedNodeGap,
                     layerPadding: treeMetrics.recommendedLayerPadding,
                     // 大量节点时启用力导向布局辅助
                     force: {
-                        repulsion: treeMetrics.nodeCount > 150 ? 50 : 0,
-                        layoutAnimation: treeMetrics.nodeCount <= 200 // 节点太多时禁用布局动画
+                        repulsion: treeMetrics.nodeCount > 150 ? 80 : 40, // 增加节点间斥力
+                        layoutAnimation: treeMetrics.nodeCount <= 250 // 节点太多时禁用布局动画
                     },
                     // 大量节点时默认不显示全部节点
                     initialTreeDepth: treeMetrics.nodeCount > 150 ? 2 : -1
@@ -1125,30 +1137,30 @@ function calculateTreeMetrics(treeData) {
     }
     
     // 计算推荐的节点间距和层级间距
-    let recommendedNodeGap = 60; // 默认节点间距
-    let recommendedLayerPadding = 180; // 默认层级间距
+    let recommendedNodeGap = 80; // 增加默认节点间距，确保更好地显示长名称
+    let recommendedLayerPadding = 250; // 增加默认层级间距，避免重叠
     
     // 根据节点数量和深度调整
     if (nodeCount > 200) {
-        recommendedNodeGap = 30; // 节点很多时，间距适当缩小
+        recommendedNodeGap = 50; // 节点很多时，间距仍保持适当大小
     } else if (nodeCount > 100) {
-        recommendedNodeGap = 40;
+        recommendedNodeGap = 60;
     }
     
     // 根据树的宽度动态调整层级间距
     if (maxDepth > 5) {
         // 树很深时，增加层级间距，但考虑总宽度
-        recommendedLayerPadding = Math.min(220, Math.max(180, 360 / maxDepth));
+        recommendedLayerPadding = Math.min(280, Math.max(220, 400 / maxDepth));
     }
     
     // 根据每层最多节点数调整节点间距
     if (widestLevelNodes > 20) {
-        recommendedNodeGap = Math.max(20, Math.min(40, 800 / widestLevelNodes));
+        recommendedNodeGap = Math.max(40, Math.min(60, 1000 / widestLevelNodes));
     }
     
     // 叶子节点过多时，调整策略
     if (leafCount > 100) {
-        recommendedNodeGap = Math.min(recommendedNodeGap, 35);
+        recommendedNodeGap = Math.min(recommendedNodeGap, 50);
     }
     
     console.log(`树分析: ${nodeCount}个节点, 最大深度: ${maxDepth}, 最大子节点数: ${maxChildren}, 叶子节点: ${leafCount}, 最宽层节点数: ${widestLevelNodes}`);
