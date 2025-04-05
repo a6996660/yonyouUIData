@@ -1430,6 +1430,7 @@ function searchNodes() {
         resultItem.style.color = '#e8eaed';
         resultItem.setAttribute('data-node-id', match.id);
         resultItem.setAttribute('tabindex', '0'); // 使元素可聚焦，支持键盘导航
+        resultItem.setAttribute('title', '点击将在图表中居中显示此节点'); // 添加提示文本
         
         // 节点路径，以 > 符号分隔
         const pathDisplay = match.path.length > 1 
@@ -1441,8 +1442,15 @@ function searchNodes() {
             ? `<span style="color: #aaa; font-size: 11px; margin-left: 4px;">(${match.tableName})</span>`
             : '';
         
+        // 添加小图标提示点击会居中节点
         resultItem.innerHTML = `
-            ${pathDisplay}<span style="font-weight: 500;">${match.name}</span>${tableNameDisplay}
+            ${pathDisplay}
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-weight: 500;">${match.name}</span>${tableNameDisplay}
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="#8ab4f8" viewBox="0 0 16 16" style="margin-left: 4px;" title="点击居中显示">
+                    <path d="M8 16a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm-1-8a1 1 0 0 1 2 0v3a1 1 0 0 1-2 0V8zm0-3a1 1 0 1 1 2 0 1 1 0 0 1-2 0z"/>
+                </svg>
+            </div>
         `;
         
         // 点击结果项目时滚动到节点并高亮
@@ -1532,19 +1540,38 @@ function clearAllHighlights() {
  * 高亮指定节点
  */
 function highlightNode(node) {
-    // 如果没有图表实例，不进行操作
-    if (!myChart) return;
+    if (!node || !myChart) return;
     
-    const option = myChart.getOption();
+    console.log('高亮节点:', node.name);
     
-    // 递归处理所有节点，对目标节点进行高亮
-    option.series[0].data[0] = processTreeHighlight(option.series[0].data[0], node);
-    
-    // 更新图表
-    myChart.setOption(option);
-    
-    // 尝试展开到目标节点
-    expandToNode(node);
+    try {
+        // 获取当前图表配置
+        const option = myChart.getOption();
+        
+        // 创建一个树节点的拷贝
+        let updatedData = JSON.parse(JSON.stringify(option.series[0].data[0]));
+        
+        // 处理树高亮状态
+        updatedData = processTreeHighlight(updatedData, node);
+        
+        // 更新图表数据
+        option.series[0].data = [updatedData];
+        myChart.setOption(option, {
+            replaceMerge: ['series']
+        });
+        
+        // 确保指定的节点被展开
+        const dataIndex = getNodeIndex(option.series[0].data, node.id);
+        if (dataIndex !== -1) {
+            myChart.dispatchAction({
+                type: 'treeExpandAndCollapse',
+                seriesIndex: 0,
+                dataIndex: dataIndex
+            });
+        }
+    } catch (error) {
+        console.error('高亮节点失败:', error);
+    }
 }
 
 /**
@@ -1560,20 +1587,27 @@ function processTreeHighlight(treeNode, targetNode) {
         nodeCopy.itemStyle = {
             color: '#ffcc00',  // 黄色背景
             borderColor: '#ff9900', // 橙色边框
-            borderWidth: 4,     // 更粗的边框
+            borderWidth: 5,     // 更粗的边框
             borderType: 'solid',
-            shadowBlur: 10,     // 添加发光效果
+            shadowBlur: 20,     // 更明显的发光效果
             shadowColor: '#ffcc00'
         };
+        
+        // 大幅强调节点的大小，使其更加突出
+        nodeCopy.symbolSize = 25; // 明显增大节点尺寸
         
         // 修改节点标签样式使其更突出
         nodeCopy.label = {
             ...nodeCopy.label,  // 保留原来的标签设置
             color: '#ffffff',   // 白色文字
             fontWeight: 'bold', // 粗体
-            backgroundColor: 'rgba(255, 153, 0, 0.3)', // 半透明背景
-            padding: [4, 8],    // 标签内边距
-            borderRadius: 4     // 圆角
+            fontSize: 14,       // 增大字体
+            backgroundColor: 'rgba(255, 153, 0, 0.6)', // 更醒目的半透明背景
+            padding: [6, 10],   // 更大的标签内边距
+            borderRadius: 4,    // 圆角
+            shadowBlur: 10,     // 添加阴影
+            shadowColor: 'rgba(0, 0, 0, 0.5)',
+            align: 'left'
         };
         
         // 设置强调状态
@@ -1582,17 +1616,37 @@ function processTreeHighlight(treeNode, targetNode) {
                 color: '#ffcc00',
                 borderColor: '#ff9900',
                 borderWidth: 6,
-                shadowBlur: 15,
+                shadowBlur: 25,
                 shadowColor: '#ffcc00'
+            },
+            label: {
+                color: '#ffffff',
+                fontWeight: 'bold',
+                backgroundColor: 'rgba(255, 153, 0, 0.7)',
+                borderColor: '#ff9900',
+                borderWidth: 1
             }
         };
+        
+        // 添加标记，使节点更加突出
+        nodeCopy.symbol = 'circle';
     } else {
-        // 非目标节点使用默认样式，但稍微降低亮度以突出目标节点
+        // 非目标节点使用默认样式，但明显降低亮度以突出目标节点
         nodeCopy.itemStyle = {
             borderWidth: 1.2,
-            // 可选：稍微降低非目标节点的亮度
-            opacity: 0.8
+            // 非目标节点半透明化
+            opacity: 0.5,
+            color: '#999999'
         };
+        
+        // 降低非目标节点标签的显示亮度
+        if (nodeCopy.label) {
+            nodeCopy.label = {
+                ...nodeCopy.label,
+                color: '#aaaaaa', // 灰色文字
+                opacity: 0.6     // 降低文字不透明度
+            };
+        }
     }
     
     // 递归处理子节点
@@ -1606,45 +1660,662 @@ function processTreeHighlight(treeNode, targetNode) {
 }
 
 /**
- * 尝试展开到目标节点
+ * 展开到指定节点
  */
-function expandToNode(targetNode) {
-    if (!myChart) return;
+function expandToNode(node) {
+    if (!node) return;
     
-    try {
-        // 尝试使用ECharts提供的树图功能定位到节点
-        // 首先获取节点路径
-        const nodePath = getNodePath(targetNode.id);
+    console.log('展开到节点:', node.name);
+    
+    // 高亮节点
+    highlightNode(node);
+    
+    // 滚动到节点位置并居中显示
+    scrollToNode(node.id, myChart);
+}
+
+/**
+ * 滚动到指定节点
+ */
+function scrollToNode(nodeId, chart) {
+    console.log("滚动到节点：", nodeId);
+    const node = findNodeById(chart.getOption().series[0].data, nodeId);
+    if (!node) {
+        console.error("未找到节点:", nodeId);
+        showTemporaryMessage("未找到节点:" + nodeId, "error");
+        return;
+    }
+
+    // 显示正在定位的消息
+    showTemporaryMessage(`正在定位到: ${node.name}`, "info");
+    
+    // 使用内部API获取节点位置
+    const coordsys = chart.getModel().getSeriesByIndex(0).coordinateSystem;
+    const point = coordsys.dataToPoint([node.x, node.y]);
+    
+    // 获取图表容器尺寸
+    const viewWidth = chart.getWidth();
+    const viewHeight = chart.getHeight();
+    
+    // 计算需要的平移量，使节点位于视图中心
+    const centerX = viewWidth / 2;
+    const centerY = viewHeight / 2;
+    const deltaX = centerX - point[0];
+    const deltaY = centerY - point[1];
+    
+    // 使用平滑动画过渡 - 步骤1：先缩小视图
+    chart.dispatchAction({
+        type: 'graphRoam',
+        zoom: 0.7  // 先明显缩小
+    });
+    
+    // 步骤2：显示寻找动画
+    setTimeout(() => {
+        // 显示搜索动画
+        const searchAnimation = {
+            id: 'search-animation',
+            type: 'circle',
+            shape: {
+                cx: centerX,
+                cy: centerY,
+                r: Math.min(viewWidth, viewHeight) / 2 - 50
+            },
+            style: {
+                fill: 'none',
+                stroke: 'rgba(138, 180, 248, 0.5)',
+                lineWidth: 2,
+                lineDash: [8, 8]
+            },
+            z: 100,
+            silent: true,
+            keyframeAnimation: [
+                {
+                    duration: 1000,
+                    loop: false,
+                    keyframes: [
+                        {
+                            percent: 0,
+                            rotation: 0,
+                            style: { lineDashOffset: 0 }
+                        },
+                        {
+                            percent: 1,
+                            rotation: Math.PI * 2,
+                            style: { lineDashOffset: 20 }
+                        }
+                    ]
+                }
+            ]
+        };
         
-        if (nodePath && nodePath.length > 0) {
-            // 确保路径上的所有节点都展开
-            expandNodePath(nodePath);
+        // 添加搜索动画到图表
+        let option = chart.getOption();
+        if (!option.graphic) option.graphic = [];
+        option.graphic.push(searchAnimation);
+        chart.setOption(option);
+        
+        // 步骤3：平移到位置
+        setTimeout(() => {
+            chart.dispatchAction({
+                type: 'graphRoam',
+                dx: deltaX,
+                dy: deltaY
+            });
             
-            // 使用ECharts的focusNodeAdjacency方法聚焦节点及其关联节点
+            // 步骤4：平移完成后放大并显示动画
             setTimeout(() => {
-                myChart.dispatchAction({
-                    type: 'highlight',
-                    seriesIndex: 0,
-                    dataIndex: getNodeIndex(targetNode.id)
+                // 清除搜索动画
+                option = chart.getOption();
+                option.graphic = option.graphic.filter(item => item.id !== 'search-animation');
+                chart.setOption(option);
+                
+                // 放大视图
+                chart.dispatchAction({
+                    type: 'graphRoam',
+                    zoom: 1.3  // 适当放大
                 });
                 
-                // 如果节点在视图外，尝试滚动视图使节点可见
-                scrollToNode(targetNode);
-            }, 300);
+                // 展开节点
+                chart.dispatchAction({
+                    type: 'treeExpandAndCollapse',
+                    seriesIndex: 0,
+                    dataIndex: getNodeIndex(chart.getOption().series[0].data, nodeId)
+                });
+                
+                // 高亮节点
+                chart.dispatchAction({
+                    type: 'highlight',
+                    seriesIndex: 0,
+                    dataIndex: getNodeIndex(chart.getOption().series[0].data, nodeId)
+                });
+                
+                // 添加成功定位的消息
+                showTemporaryMessage(`已定位到: ${node.name}`, "success");
+                
+                // 添加动画效果
+                createPulsingAnimation(chart, node);
+                
+                // 添加短暂的缩放弹跳动画，增强视觉效果
+                let currentZoom = 1.3;
+                const zoomSteps = [
+                    { zoom: 1.4, delay: 100 },
+                    { zoom: 1.2, delay: 200 },
+                    { zoom: 1.3, delay: 100 }
+                ];
+                
+                zoomSteps.forEach(step => {
+                    setTimeout(() => {
+                        chart.dispatchAction({
+                            type: 'graphRoam',
+                            zoom: step.zoom
+                        });
+                    }, step.delay);
+                });
+                
+            }, 500); // 平移后等待500ms再放大
+        }, 800); // 搜索动画显示800ms后开始平移
+    }, 400); // 缩小后等待400ms再显示搜索动画
+}
+
+/**
+ * 创建节点的脉动动画效果
+ */
+function createPulsingAnimation(chart, node) {
+    // 获取当前图表配置
+    const option = chart.getOption();
+    const coordsys = chart.getModel().getSeriesByIndex(0).coordinateSystem;
+    const point = coordsys.dataToPoint([node.x, node.y]);
+    
+    // 清除之前的动画效果（如果有）
+    if (option.graphic) {
+        const existingEffects = option.graphic.filter(item => item.id && item.id.startsWith('pulse-effect'));
+        if (existingEffects.length > 0) {
+            option.graphic = option.graphic.filter(item => !item.id || !item.id.startsWith('pulse-effect'));
         }
-    } catch (error) {
-        console.warn('无法自动展开到节点:', error);
     }
+    
+    // 创建多层脉动效果
+    const pulseEffects = [];
+    const colors = [
+        'rgba(255, 204, 0, ', // 亮黄色
+        'rgba(255, 153, 0, ', // 橙色
+        'rgba(255, 102, 0, ', // 深橙色
+        'rgba(255, 51, 0, '   // 红橙色
+    ];
+    
+    // 添加聚焦箭头指示符
+    const arrowSize = 24;
+    const arrowOffset = 60;
+    
+    // 创建四个方向的箭头指示器
+    const directions = [
+        { x: 0, y: -1, rotate: 0 },    // 上
+        { x: 1, y: 0, rotate: 90 },    // 右
+        { x: 0, y: 1, rotate: 180 },   // 下
+        { x: -1, y: 0, rotate: 270 }   // 左
+    ];
+    
+    directions.forEach((dir, index) => {
+        const arrowX = point[0] + dir.x * arrowOffset;
+        const arrowY = point[1] + dir.y * arrowOffset;
+        
+        // 创建箭头
+        const arrow = {
+            id: `pulse-effect-arrow-${index}`,
+            type: 'path',
+            shape: {
+                pathData: 'M0,0 L10,20 L20,0 Z', // 简单的三角形箭头
+                x: -10,
+                y: -10
+            },
+            position: [arrowX, arrowY],
+            rotation: dir.rotate * Math.PI / 180,
+            style: {
+                fill: colors[0] + '0.9)',
+                stroke: '#ffffff',
+                lineWidth: 1,
+                shadowBlur: 10,
+                shadowColor: colors[0] + '1)'
+            },
+            z: 200,
+            silent: true
+        };
+        
+        // 添加箭头动画
+        arrow.keyframeAnimation = [
+            {
+                duration: 1000,
+                delay: index * 200, // 错开每个箭头的动画开始时间
+                loop: true,
+                keyframes: [
+                    {
+                        percent: 0,
+                        style: { opacity: 0.1, fill: colors[0] + '0.3)' },
+                        position: [
+                            arrowX - dir.x * 15, 
+                            arrowY - dir.y * 15
+                        ]
+                    },
+                    {
+                        percent: 0.5,
+                        style: { opacity: 0.9, fill: colors[0] + '0.9)' },
+                        position: [arrowX, arrowY]
+                    },
+                    {
+                        percent: 1,
+                        style: { opacity: 0.1, fill: colors[0] + '0.3)' },
+                        position: [
+                            arrowX - dir.x * 15, 
+                            arrowY - dir.y * 15
+                        ]
+                    }
+                ]
+            }
+        ];
+        
+        pulseEffects.push(arrow);
+    });
+    
+    // 创建围绕节点的聚光圈效果
+    const spotlightRadius = 200;
+    const spotlight = {
+        id: 'pulse-effect-spotlight',
+        type: 'circle',
+        shape: {
+            cx: point[0],
+            cy: point[1],
+            r: spotlightRadius
+        },
+        style: {
+            fill: new echarts.graphic.RadialGradient(0.5, 0.5, 1, [
+                { offset: 0, color: 'rgba(255, 204, 0, 0)' },
+                { offset: 0.7, color: 'rgba(255, 204, 0, 0)' },
+                { offset: 0.85, color: 'rgba(255, 204, 0, 0.15)' },
+                { offset: 0.95, color: 'rgba(255, 204, 0, 0.3)' },
+                { offset: 1, color: 'rgba(255, 204, 0, 0.5)' }
+            ]),
+            shadowBlur: 20,
+            shadowColor: 'rgba(255, 204, 0, 0.3)'
+        },
+        z: 90,
+        silent: true,
+        keyframeAnimation: [
+            {
+                duration: 3000,
+                loop: true,
+                keyframes: [
+                    {
+                        percent: 0,
+                        style: { opacity: 0.6 }
+                    },
+                    {
+                        percent: 0.5,
+                        style: { opacity: 0.2 }
+                    },
+                    {
+                        percent: 1,
+                        style: { opacity: 0.6 }
+                    }
+                ]
+            }
+        ]
+    };
+    pulseEffects.push(spotlight);
+    
+    // 为每层创建不同的动画效果
+    for (let i = 0; i < 4; i++) {
+        const delay = i * 300; // 错开每层动画的开始时间
+        const scale = 1 + (i * 0.1); // 每层略微不同的缩放
+        
+        // 创建脉动圆圈
+        const pulseEffect = {
+            id: `pulse-effect-${i}`,
+            type: 'circle',
+            shape: {
+                cx: point[0],
+                cy: point[1],
+                r: 15 + i * 5
+            },
+            style: {
+                fill: colors[i % colors.length] + '0.7)',
+                stroke: colors[i % colors.length] + '0.9)',
+                lineWidth: 3 - i * 0.5,
+                shadowBlur: 15,
+                shadowColor: colors[i % colors.length] + '0.8)'
+            },
+            z: 100 - i, // 确保层叠顺序正确
+            silent: true, // 不响应鼠标事件
+            scale: [scale, scale],
+            
+            // 设置动画效果
+            animation: true,
+            animationDelay: delay,
+            animationDuration: 1500,
+            animationEasing: 'elasticOut',
+            animationLoop: true
+        };
+        
+        // 添加脉动和淡出效果
+        const expandAndFade = {
+            duration: 1200,
+            easing: 'cubicOut',
+            delay: delay,
+            loop: true,
+            keyframes: [
+                {
+                    percent: 0,
+                    shape: { r: 15 + i * 5 },
+                    style: { 
+                        opacity: 0.9,
+                        fill: colors[i % colors.length] + '0.7)',
+                        stroke: colors[i % colors.length] + '0.9)',
+                        shadowBlur: 15
+                    },
+                    scale: [scale, scale]
+                },
+                {
+                    percent: 0.5,
+                    shape: { r: 40 + i * 15 },
+                    style: { 
+                        opacity: 0.4,
+                        fill: colors[i % colors.length] + '0.4)',
+                        stroke: colors[i % colors.length] + '0.6)',
+                        shadowBlur: 25
+                    },
+                    scale: [scale * 1.1, scale * 1.1]
+                },
+                {
+                    percent: 1,
+                    shape: { r: 65 + i * 20 },
+                    style: { 
+                        opacity: 0,
+                        fill: colors[i % colors.length] + '0.1)',
+                        stroke: colors[i % colors.length] + '0.2)',
+                        shadowBlur: 5
+                    },
+                    scale: [scale, scale]
+                }
+            ]
+        };
+        
+        pulseEffect.keyframeAnimation = [expandAndFade];
+        pulseEffects.push(pulseEffect);
+    }
+    
+    // 创建中心指示器
+    const centerIndicator = {
+        id: 'pulse-effect-center',
+        type: 'circle',
+        shape: {
+            cx: point[0],
+            cy: point[1],
+            r: 14
+        },
+        style: {
+            fill: 'rgba(255, 204, 0, 0.9)',
+            stroke: 'rgba(255, 255, 255, 1)',
+            lineWidth: 3,
+            shadowBlur: 20,
+            shadowColor: 'rgba(255, 204, 0, 1)'
+        },
+        z: 101,
+        silent: true,
+        
+        // 中心指示器的闪烁效果
+        keyframeAnimation: [
+            {
+                duration: 800,
+                easing: 'sinusoidalInOut',
+                loop: true,
+                keyframes: [
+                    {
+                        percent: 0,
+                        style: { 
+                            shadowBlur: 15,
+                            fill: 'rgba(255, 204, 0, 0.9)',
+                            stroke: 'rgba(255, 255, 255, 1)',
+                            lineWidth: 3
+                        },
+                        scale: [1, 1]
+                    },
+                    {
+                        percent: 0.5,
+                        style: { 
+                            shadowBlur: 25,
+                            fill: 'rgba(255, 153, 0, 1)',
+                            stroke: 'rgba(255, 255, 255, 1)',
+                            lineWidth: 4
+                        },
+                        scale: [1.2, 1.2]
+                    },
+                    {
+                        percent: 1,
+                        style: { 
+                            shadowBlur: 15,
+                            fill: 'rgba(255, 204, 0, 0.9)',
+                            stroke: 'rgba(255, 255, 255, 1)',
+                            lineWidth: 3
+                        },
+                        scale: [1, 1]
+                    }
+                ]
+            }
+        ]
+    };
+    
+    pulseEffects.push(centerIndicator);
+    
+    // 添加中心十字准星
+    const crosshairSize = 24;
+    const crosshair = {
+        id: 'pulse-effect-crosshair',
+        type: 'group',
+        position: [point[0], point[1]],
+        z: 102,
+        silent: true,
+        children: [
+            // 横线
+            {
+                type: 'rect',
+                shape: {
+                    x: -crosshairSize / 2,
+                    y: -1,
+                    width: crosshairSize,
+                    height: 2
+                },
+                style: {
+                    fill: '#ffffff'
+                }
+            },
+            // 竖线
+            {
+                type: 'rect',
+                shape: {
+                    x: -1,
+                    y: -crosshairSize / 2,
+                    width: 2,
+                    height: crosshairSize
+                },
+                style: {
+                    fill: '#ffffff'
+                }
+            }
+        ],
+        keyframeAnimation: [
+            {
+                duration: 1500,
+                loop: true,
+                keyframes: [
+                    {
+                        percent: 0,
+                        rotation: 0,
+                        style: { opacity: 0.7 }
+                    },
+                    {
+                        percent: 0.25,
+                        rotation: Math.PI / 4,
+                        style: { opacity: 1 }
+                    },
+                    {
+                        percent: 0.5,
+                        rotation: Math.PI / 2,
+                        style: { opacity: 0.7 }
+                    },
+                    {
+                        percent: 0.75,
+                        rotation: 3 * Math.PI / 4,
+                        style: { opacity: 1 }
+                    },
+                    {
+                        percent: 1,
+                        rotation: Math.PI,
+                        style: { opacity: 0.7 }
+                    }
+                ]
+            }
+        ]
+    };
+    pulseEffects.push(crosshair);
+    
+    // 更新图表配置，添加动画效果
+    if (!option.graphic) {
+        option.graphic = [];
+    }
+    
+    option.graphic = [...option.graphic, ...pulseEffects];
+    chart.setOption(option);
+    
+    // 5秒后移除动画效果
+    setTimeout(() => {
+        const currentOption = chart.getOption();
+        if (currentOption.graphic) {
+            currentOption.graphic = currentOption.graphic.filter(
+                item => !item.id || !item.id.startsWith('pulse-effect')
+            );
+            chart.setOption(currentOption);
+        }
+    }, 5000); // 延长动画持续时间到5秒
+}
+
+/**
+ * 显示临时消息提示
+ */
+function showTemporaryMessage(message, type = "info") {
+    // 创建消息元素
+    const messageEl = document.createElement('div');
+    messageEl.className = `temp-message temp-message-${type}`;
+    messageEl.innerText = message;
+    
+    // 样式设置
+    Object.assign(messageEl.style, {
+        position: 'fixed',
+        top: '50px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        padding: '10px 20px',
+        borderRadius: '4px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+        zIndex: 9999,
+        opacity: 0,
+        transition: 'opacity 0.3s ease-in-out',
+        backgroundColor: type === 'error' ? '#ffdddd' : '#f0f9eb',
+        color: type === 'error' ? '#f56c6c' : '#67c23a',
+        border: `1px solid ${type === 'error' ? '#fbc4c4' : '#c2e7b0'}`
+    });
+    
+    // 添加到文档
+    document.body.appendChild(messageEl);
+    
+    // 显示动画
+    setTimeout(() => {
+        messageEl.style.opacity = 1;
+    }, 10);
+    
+    // 2秒后隐藏并移除
+    setTimeout(() => {
+        messageEl.style.opacity = 0;
+        setTimeout(() => {
+            document.body.removeChild(messageEl);
+        }, 300);
+    }, 2000);
+}
+
+/**
+ * 在图表数据中查找指定ID的节点
+ */
+function findNodeInChartData(nodeId) {
+    if (!myChart) return null;
+    
+    const option = myChart.getOption();
+    if (!option.series || !option.series[0] || !option.series[0].data || !option.series[0].data[0]) {
+        return null;
+    }
+    
+    const rootNode = option.series[0].data[0];
+    return findNodeById(rootNode, nodeId);
+}
+
+/**
+ * 递归查找指定ID的节点
+ */
+function findNodeById(node, targetId) {
+    if (!node) return null;
+    
+    // 检查当前节点
+    if (node.id === targetId) {
+        return node;
+    }
+    
+    // 递归检查子节点
+    if (node.children && node.children.length > 0) {
+        for (const child of node.children) {
+            const found = findNodeById(child, targetId);
+            if (found) return found;
+        }
+    }
+    
+    return null;
 }
 
 /**
  * 获取节点在树中的索引
  */
 function getNodeIndex(nodeId) {
-    // 这个功能可能需要根据ECharts的具体实现调整
-    // 由于没有直接的方法获取节点索引，我们可能需要遍历树
-    // 这里只是一个示例实现
-    return 0;  // 默认返回0
+    if (!myChart) return 0;
+    
+    // 查找节点在图表数据中的索引
+    const dataIndices = [];
+    
+    const option = myChart.getOption();
+    if (!option.series || !option.series[0] || !option.series[0].data) {
+        return 0;
+    }
+    
+    // 递归查找节点索引
+    function findDataIndex(node, index = 0) {
+        if (!node) return index;
+        
+        // 如果找到目标节点，记录索引
+        if (node.id === nodeId) {
+            dataIndices.push(index);
+        }
+        
+        // 递归查找子节点
+        let currentIndex = index + 1;
+        if (node.children && node.children.length > 0) {
+            for (const child of node.children) {
+                currentIndex = findDataIndex(child, currentIndex);
+            }
+        }
+        
+        return currentIndex;
+    }
+    
+    // 从根节点开始查找
+    findDataIndex(option.series[0].data[0], 0);
+    
+    // 返回找到的第一个匹配索引，或默认为0
+    return dataIndices.length > 0 ? dataIndices[0] : 0;
 }
 
 /**
@@ -1669,25 +2340,503 @@ function expandNodePath(nodePath) {
 }
 
 /**
- * 滚动视图使节点可见
+ * 处理搜索结果点击事件
  */
-function scrollToNode(node) {
-    // 实际实现可能需要计算节点在画布中的位置
-    // 然后使用ECharts的graphic.viewportMove等方法
-    if (myChart && node) {
-        try {
-            // 这里只是一个示例框架
-            console.log('尝试滚动到节点:', node.name);
+function handleSearchResultClick(result) {
+    console.log("搜索结果点击:", result);
+    
+    if (!result || !result.id) {
+        console.warn("无效的搜索结果项");
+        return;
+    }
+    
+    try {
+        // 先从图表数据中查找节点
+        const node = findNodeById(myChart.getOption().series[0].data, result.id);
+        
+        if (node) {
+            console.log("找到节点:", node.name);
             
-            // 实际实现可能使用如下方法：
-            // myChart.dispatchAction({
-            //     type: 'graphRoam',
-            //     zoom: 1.5,  // 放大倍数
-            //     offsetX: xOffset,  // X方向偏移
-            //     offsetY: yOffset   // Y方向偏移
-            // });
-        } catch (error) {
-            console.warn('滚动到节点失败:', error);
+            // 更新搜索结果项的状态
+            const allResultItems = document.querySelectorAll('.search-result-item');
+            const resultItem = document.querySelector(`.search-result-item[data-id="${result.id}"]`);
+            
+            // 移除所有高亮
+            allResultItems.forEach(item => {
+                item.classList.remove('result-clicked');
+                item.style.borderColor = 'transparent';
+            });
+            
+            // 高亮当前选中的项目
+            if (resultItem) {
+                resultItem.classList.add('result-clicked');
+                resultItem.style.borderColor = '#ff9900';
+                
+                // 确保选中项可见（滚动到视图内）
+                resultItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                
+                // 添加点击反馈
+                const lastNodeId = document.querySelector('#searchResults').getAttribute('data-last-selected');
+                
+                // 如果这是一个新节点（不是重复点击同一个节点）
+                if (lastNodeId !== result.id) {
+                    // 标记切换状态
+                    myChart.getZr().dom.classList.add('node-switching');
+                    
+                    // 200ms后移除切换状态（与动画时长匹配）
+                    setTimeout(() => {
+                        myChart.getZr().dom.classList.remove('node-switching');
+                    }, 2000);
+                    
+                    // 记录最后选择的节点
+                    document.querySelector('#searchResults').setAttribute('data-last-selected', result.id);
+                }
+            }
+            
+            // 高亮并展开到节点
+            expandToNode({
+                id: result.id,
+                name: result.name || node.name,
+                depth: node.depth
+            });
+            
+            // 显示节点详情（如果有对应功能）
+            if (typeof showNodeDetails === 'function') {
+                try {
+                    showNodeDetails({
+                        name: node.name,
+                        id: node.id,
+                        type: node.type || result.type || '节点',
+                        properties: node.properties || result.properties || {}
+                    });
+                } catch (detailsError) {
+                    console.warn("显示节点详情时出错:", detailsError);
+                }
+            }
+        } else {
+            console.warn("未在图表中找到对应节点:", result.id);
+            showTemporaryMessage("未找到对应的节点: " + result.name, "error");
+        }
+    } catch (error) {
+        console.error("处理搜索结果点击时出错:", error);
+        showTemporaryMessage("处理点击时出错，请重试", "error");
+    }
+}
+
+// 添加必要的CSS样式
+function addCustomStyles() {
+    const styleEl = document.createElement('style');
+    styleEl.textContent = `
+        /* 搜索结果区域样式 */
+        #searchResults {
+            scrollbar-width: thin;
+            scrollbar-color: #4d4d4d #2f3136;
+        }
+        
+        #searchResults::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        #searchResults::-webkit-scrollbar-track {
+            background: #2f3136;
+            border-radius: 3px;
+        }
+        
+        #searchResults::-webkit-scrollbar-thumb {
+            background-color: #4d4d4d;
+            border-radius: 3px;
+        }
+        
+        /* 搜索结果项样式 */
+        .search-result-item {
+            position: relative;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        
+        .search-result-item:hover {
+            transform: translateY(-2px);
+        }
+        
+        .search-result-item:focus {
+            outline: none;
+            border-color: #8ab4f8 !important;
+            box-shadow: 0 0 0 2px rgba(138, 180, 248, 0.3);
+        }
+        
+        /* 搜索结果点击效果 */
+        .result-clicked {
+            animation: result-pulse 2.5s ease-in-out;
+            position: relative;
+        }
+        
+        .result-clicked::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 6px;
+            box-shadow: 0 0 12px #ff9900;
+            animation: glow-pulse 2.5s ease-in-out;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        @keyframes result-pulse {
+            0% { background-color: rgba(255, 153, 0, 0.8); }
+            30% { background-color: rgba(255, 153, 0, 0.4); }
+            60% { background-color: rgba(255, 153, 0, 0.2); }
+            100% { background-color: transparent; }
+        }
+        
+        @keyframes glow-pulse {
+            0% { opacity: 1; box-shadow: 0 0 15px #ff9900; }
+            50% { opacity: 0.6; box-shadow: 0 0 8px #ff9900; }
+            100% { opacity: 0; box-shadow: 0 0 0px #ff9900; }
+        }
+        
+        /* 临时消息样式 */
+        .temp-message {
+            z-index: 9999;
+            padding: 12px 20px;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            font-weight: 500;
+            animation: message-slide 2.5s ease-in-out;
+            display: flex;
+            align-items: center;
+        }
+        
+        .temp-message::before {
+            content: '';
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            margin-right: 10px;
+            border-radius: 50%;
+        }
+        
+        .temp-message-success {
+            background-color: rgba(47, 121, 46, 0.95);
+            color: #ffffff;
+            border-left: 4px solid #67c23a;
+        }
+        
+        .temp-message-success::before {
+            background-color: #67c23a;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+            background-size: 12px;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        
+        .temp-message-error {
+            background-color: rgba(148, 43, 43, 0.95);
+            color: #ffffff;
+            border-left: 4px solid #f56c6c;
+        }
+        
+        .temp-message-error::before {
+            background-color: #f56c6c;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='18' y1='6' x2='6' y2='18'%3E%3C/line%3E%3Cline x1='6' y1='6' x2='18' y2='18'%3E%3C/line%3E%3C/svg%3E");
+            background-size: 12px;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        
+        .temp-message-info {
+            background-color: rgba(40, 74, 117, 0.95);
+            color: #ffffff;
+            border-left: 4px solid #8ab4f8;
+        }
+        
+        .temp-message-info::before {
+            background-color: #8ab4f8;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cline x1='12' y1='16' x2='12' y2='12'%3E%3C/line%3E%3Cline x1='12' y1='8' x2='12.01' y2='8'%3E%3C/line%3E%3C/svg%3E");
+            background-size: 12px;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        
+        @keyframes message-slide {
+            0% { transform: translateY(-20px) translateX(-50%); opacity: 0; }
+            10% { transform: translateY(0) translateX(-50%); opacity: 1; }
+            80% { transform: translateY(0) translateX(-50%); opacity: 1; }
+            100% { transform: translateY(-20px) translateX(-50%); opacity: 0; }
+        }
+
+        /* 当搜索结果之间切换时的过渡动画 */
+        @keyframes node-switch-highlight {
+            0% { filter: brightness(2) saturate(1.5); }
+            30% { filter: brightness(1.5) saturate(1.3); }
+            100% { filter: brightness(1) saturate(1); }
+        }
+        
+        .node-switching {
+            animation: node-switch-highlight 2s ease-out forwards;
+        }
+    `;
+    document.head.appendChild(styleEl);
+}
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    // 添加自定义样式
+    addCustomStyles();
+    
+    // ... 其他初始化代码 ...
+});
+
+/**
+ * 渲染搜索结果
+ */
+function renderSearchResults(results) {
+    const resultsContainer = document.getElementById('searchResults');
+    resultsContainer.innerHTML = '';
+    
+    if (!results || results.length === 0) {
+        resultsContainer.innerHTML = '<div class="no-results" style="padding: 12px; text-align: center; color: #aaa;">无匹配结果</div>';
+        return;
+    }
+    
+    // 创建搜索结果顶部的简要说明
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'search-result-header';
+    headerDiv.innerHTML = `
+        <div style="padding: 6px 12px; margin-bottom: 8px; border-bottom: 1px solid #4d4d4d; font-size: 12px; color: #8ab4f8;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span>找到 ${results.length} 个节点</span>
+                <span style="font-style: italic;">点击项目可在图表中定位</span>
+            </div>
+        </div>
+    `;
+    resultsContainer.appendChild(headerDiv);
+    
+    // 创建结果列表容器
+    const resultsList = document.createElement('div');
+    resultsList.className = 'search-results-list';
+    resultsList.style.maxHeight = '300px';
+    resultsList.style.overflowY = 'auto';
+    resultsList.style.paddingRight = '5px';
+    
+    results.forEach((result, index) => {
+        const resultItem = document.createElement('div');
+        resultItem.className = 'search-result-item';
+        resultItem.setAttribute('data-id', result.id); // 添加数据属性用于识别
+        resultItem.setAttribute('tabindex', '0'); // 使元素可聚焦，支持键盘导航
+        
+        // 设计更现代的样式
+        Object.assign(resultItem.style, {
+            position: 'relative',
+            padding: '10px 14px',
+            backgroundColor: index % 2 === 0 ? '#36393f' : '#2f3136',
+            borderRadius: '6px',
+            marginBottom: '6px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            border: '1px solid transparent'
+        });
+        
+        // 图标和标题容器
+        const titleContainer = document.createElement('div');
+        titleContainer.style.display = 'flex';
+        titleContainer.style.alignItems = 'center';
+        titleContainer.style.flex = '1';
+        
+        // 添加可视提示图标
+        const icon = document.createElement('div');
+        icon.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff9900" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="16"></line>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+            </svg>
+        `;
+        icon.style.marginRight = '12px';
+        icon.style.flexShrink = '0';
+        
+        // 节点内容
+        const contentDiv = document.createElement('div');
+        contentDiv.style.flex = '1';
+        contentDiv.style.overflow = 'hidden';
+        
+        // 节点名称
+        const nameSpan = document.createElement('div');
+        nameSpan.textContent = result.name;
+        nameSpan.style.fontWeight = 'bold';
+        nameSpan.style.whiteSpace = 'nowrap';
+        nameSpan.style.overflow = 'hidden';
+        nameSpan.style.textOverflow = 'ellipsis';
+        
+        // 节点信息/类型
+        const typeSpan = document.createElement('div');
+        typeSpan.style.fontSize = '12px';
+        typeSpan.style.color = '#aaa';
+        typeSpan.style.marginTop = '2px';
+        
+        // 根据结果类型设置不同的显示
+        if (result.type === 'table') {
+            typeSpan.textContent = `表 · ${result.description || ''}`;
+        } else if (result.type === 'column') {
+            typeSpan.textContent = `列 · 所属表: ${result.tableName || '未知'}`;
+        } else {
+            typeSpan.textContent = `${result.type || '节点'} · ${result.description || ''}`;
+        }
+        
+        contentDiv.appendChild(nameSpan);
+        contentDiv.appendChild(typeSpan);
+        
+        titleContainer.appendChild(icon);
+        titleContainer.appendChild(contentDiv);
+        
+        // 操作图标
+        const actionIcon = document.createElement('div');
+        actionIcon.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8ab4f8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="2"></circle>
+                <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path>
+            </svg>
+        `;
+        actionIcon.style.marginLeft = '10px';
+        actionIcon.style.flexShrink = '0';
+        actionIcon.title = "点击定位到此节点";
+        
+        resultItem.appendChild(titleContainer);
+        resultItem.appendChild(actionIcon);
+        
+        // 添加鼠标悬停效果
+        resultItem.addEventListener('mouseenter', () => {
+            resultItem.style.backgroundColor = '#42464e';
+            resultItem.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
+            resultItem.style.borderColor = '#8ab4f8';
+        });
+        
+        resultItem.addEventListener('mouseleave', () => {
+            resultItem.style.backgroundColor = index % 2 === 0 ? '#36393f' : '#2f3136';
+            resultItem.style.boxShadow = 'none';
+            resultItem.style.borderColor = 'transparent';
+        });
+        
+        // 添加点击事件监听
+        resultItem.addEventListener('click', () => {
+            // 设置点击状态和过渡动画
+            document.querySelectorAll('.search-result-item').forEach(item => {
+                item.classList.remove('result-clicked');
+                item.style.borderColor = 'transparent';
+            });
+            
+            resultItem.classList.add('result-clicked');
+            resultItem.style.borderColor = '#ff9900';
+            
+            // 处理点击事件
+            handleSearchResultClick(result);
+        });
+        
+        // 支持键盘操作
+        resultItem.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                resultItem.click();
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                const nextSibling = resultItem.nextElementSibling;
+                if (nextSibling) nextSibling.focus();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                const prevSibling = resultItem.previousElementSibling;
+                if (prevSibling) prevSibling.focus();
+            }
+        });
+        
+        // 添加提示信息
+        resultItem.title = "点击将在图表中定位并高亮此节点";
+        
+        resultsList.appendChild(resultItem);
+    });
+    
+    resultsContainer.appendChild(resultsList);
+    
+    // 自动聚焦到第一个结果项
+    if (results.length > 0) {
+        setTimeout(() => {
+            const firstItem = resultsContainer.querySelector('.search-result-item');
+            if (firstItem) firstItem.focus();
+        }, 100);
+    }
+}
+
+/**
+ * 根据ID查找节点
+ * @param {Array} data 图表数据
+ * @param {String} nodeId 要查找的节点ID
+ * @returns {Object|null} 找到的节点对象或null
+ */
+function findNodeById(data, nodeId) {
+    if (!data || !nodeId) return null;
+    
+    // 处理单个节点的情况
+    if (!Array.isArray(data)) {
+        data = [data];
+    }
+    
+    for (let i = 0; i < data.length; i++) {
+        const node = data[i];
+        
+        // 检查当前节点
+        if (node.id === nodeId) {
+            return node;
+        }
+        
+        // 递归检查子节点
+        if (node.children && node.children.length > 0) {
+            const found = findNodeById(node.children, nodeId);
+            if (found) return found;
         }
     }
+    
+    return null;
+}
+
+/**
+ * 获取节点在数据中的索引
+ * @param {Array} data 图表数据
+ * @param {String} nodeId 节点ID
+ * @returns {Number} 节点索引，找不到返回-1
+ */
+function getNodeIndex(data, nodeId) {
+    if (!data || !nodeId) return -1;
+    
+    // 处理单个节点的情况
+    if (!Array.isArray(data)) {
+        data = [data];
+    }
+    
+    // 扁平化数据结构以查找索引
+    const flattenNodes = [];
+    
+    function flatten(nodes) {
+        if (!nodes) return;
+        
+        for (let i = 0; i < nodes.length; i++) {
+            flattenNodes.push(nodes[i]);
+            if (nodes[i].children && nodes[i].children.length > 0) {
+                flatten(nodes[i].children);
+            }
+        }
+    }
+    
+    flatten(data);
+    
+    // 查找节点索引
+    for (let i = 0; i < flattenNodes.length; i++) {
+        if (flattenNodes[i].id === nodeId) {
+            return i;
+        }
+    }
+    
+    return -1;
 }
