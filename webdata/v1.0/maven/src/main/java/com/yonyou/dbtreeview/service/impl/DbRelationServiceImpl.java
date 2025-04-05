@@ -186,13 +186,14 @@ public class DbRelationServiceImpl implements DbRelationService {
                     // 传递billNo属性
                     if (billNo != null) {
                         templateNode.setAttribute("cBillNo", billNo);
+                        templateNode.setAttribute("iBillEntityId", parentNode.getId());
                     }
                     
                     // 添加子节点
-                    parentNode.addChild(templateNode);
+//                    parentNode.addChild(templateNode);
                     
                     // 添加billtplgroup_base子节点 - 作为billtemplate_base的子节点
-                    addBillTplGroupNodes(conn, templateNode, billId, billNo, ytenant_id);
+                    addBillTplGroupNodes(conn, templateNode, billId, billNo, ytenant_id ,parentNode);
                 }
             }
         }
@@ -201,15 +202,17 @@ public class DbRelationServiceImpl implements DbRelationService {
     /**
      * 添加billtplgroup_base子节点
      */
-    private void addBillTplGroupNodes(Connection conn, DbTreeNode parentNode, String billId, String billNo, String ytenant_id) throws SQLException {
-        String sql = "SELECT id, ccode, cName FROM billtplgroup_base WHERE iBillId = ? AND iTplId = ? AND tenant_id = ?";
+    private void addBillTplGroupNodes(Connection conn, DbTreeNode parentNode, String billId, String billNo, String ytenant_id,DbTreeNode entityNode) throws SQLException {
+        String sql = "SELECT id, ccode, cName FROM billtplgroup_base WHERE iBillId = ? AND iTplId = ? AND iBillEntityId = ? AND tenant_id = ?";
         
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, billId);
             stmt.setString(2, parentNode.getId());
-            stmt.setString(3, ytenant_id);
+            stmt.setString(3, String.valueOf(parentNode.getAttribute("iBillEntityId")));
+            stmt.setString(4, ytenant_id);
             
             try (ResultSet rs = stmt.executeQuery()) {
+                boolean isExists = false;
                 while (rs.next()) {
                     String groupId = rs.getString("id");
                     String ccode = rs.getString("ccode");
@@ -224,7 +227,7 @@ public class DbRelationServiceImpl implements DbRelationService {
                     
                     // 添加子节点
                     parentNode.addChild(groupNode);
-                    
+                    isExists = true;
                     // 创建按钮节点（作为billtplgroup_base的子节点）
                     DbTreeNode buttonNode = new DbTreeNode("按钮", "button_" + groupId);
                     buttonNode.setAttribute("cName", "按钮");
@@ -249,6 +252,9 @@ public class DbRelationServiceImpl implements DbRelationService {
                     
                     // 添加实际的billitem_base子节点
                     addBillItemNodes(conn, itemsNode, billId, ytenant_id, groupNode);
+                }
+                if (isExists){
+                    entityNode.addChild(parentNode);
                 }
             }
         }
