@@ -32,14 +32,15 @@ public class DbRelationController {
      */
     @PostMapping("/tree")
     public ApiResponse<DbTreeResponse> getDbRelationTree(@RequestBody DbRelationRequest request) {
-        logger.info("接收到获取数据库关联树请求: 环境={}, 数据库名={}, 表单编码={}", 
-                request.getEnvironment(), request.getDbName(), request.getBillNo());
+        logger.info("接收到获取数据库关联树请求: 环境={}, 数据库名={}, 表单编码={}, 租户ID={}", 
+                request.getEnvironment(), request.getDbName(), request.getBillNo(), request.getYtenant_id());
         
         try {
             return ApiResponse.success(dbRelationService.getDbRelationTree(
                     request.getEnvironment(),
                     request.getDbName(),
                     request.getBillNo(),
+                    request.getYtenant_id(),
                     request.getDbConfig()
             ));
         } catch (Exception e) {
@@ -81,8 +82,8 @@ public class DbRelationController {
             }
             
             // 添加日志记录参数
-            logger.info("获取表详情, 参数详情: 环境={}, 数据库名={}, 表名={}, ID={}", 
-                request.getEnvironment(), request.getDbName(), request.getTableName(), request.getId());
+            logger.info("获取表详情, 参数详情: 环境={}, 数据库名={}, 表名={}, ID={}, 租户ID={}", 
+                request.getEnvironment(), request.getDbName(), request.getTableName(), request.getId(), request.getYtenant_id());
             
             // 创建DTO对象
             DbConfigDTO dbConfigDTO = new DbConfigDTO();
@@ -97,6 +98,7 @@ public class DbRelationController {
                 request.getDbName(),
                 request.getTableName(),
                 request.getId(),
+                request.getYtenant_id(),
                 dbConfigDTO
             );
             

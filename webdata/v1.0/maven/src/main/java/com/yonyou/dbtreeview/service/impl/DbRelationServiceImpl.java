@@ -22,7 +22,7 @@ public class DbRelationServiceImpl implements DbRelationService {
     private static final Logger logger = LoggerFactory.getLogger(DbRelationServiceImpl.class);
     
     @Override
-    public DbTreeResponse getDbRelationTree(String environment, String dbName, String billNo, DbConfigDTO dbConfig) {
+    public DbTreeResponse getDbRelationTree(String environment, String dbName, String billNo, String ytenant_id, DbConfigDTO dbConfig) {
         Connection conn = null;
         
         try {
@@ -30,17 +30,17 @@ public class DbRelationServiceImpl implements DbRelationService {
             conn = getConnection(dbName, dbConfig);
             
             // 创建树形结构根节点
-            DbTreeNode rootNode = getBillBaseNode(conn, billNo);
+            DbTreeNode rootNode = getBillBaseNode(conn, billNo, ytenant_id);
             
             if (rootNode != null) {
                 // 保存billNo到根节点，使其易于传递
                 rootNode.setAttribute("cBillNo", billNo);
                 
                 // 添加billentity_base子节点
-                addBillEntityNodes(conn, rootNode);
+                addBillEntityNodes(conn, rootNode, ytenant_id);
                 
                 // 添加pb_meta_filters子节点
-                addMetaFilterNodes(conn, rootNode);
+                addMetaFilterNodes(conn, rootNode, ytenant_id);
             }
             
             return new DbTreeResponse(rootNode);
@@ -53,7 +53,7 @@ public class DbRelationServiceImpl implements DbRelationService {
     }
     
     @Override
-    public TableDetailsResponse getTableDetails(String environment, String dbName, String tableName, String id, DbConfigDTO dbConfig) {
+    public TableDetailsResponse getTableDetails(String environment, String dbName, String tableName, String id, String ytenant_id, DbConfigDTO dbConfig) {
         Connection conn = null;
         
         try {
@@ -61,7 +61,7 @@ public class DbRelationServiceImpl implements DbRelationService {
             conn = getConnection(dbName, dbConfig);
             
             // 查询表详情
-            Map<String, Object> data = queryTableDetails(conn, tableName, id);
+            Map<String, Object> data = queryTableDetails(conn, tableName, id, ytenant_id);
             
             return new TableDetailsResponse(tableName, data);
         } catch (Exception e) {
@@ -117,11 +117,12 @@ public class DbRelationServiceImpl implements DbRelationService {
     /**
      * 获取bill_base根节点
      */
-    private DbTreeNode getBillBaseNode(Connection conn, String billNo) throws SQLException {
-        String sql = "SELECT id, cBillNo, cName, cFilterId FROM bill_base WHERE cBillNo = ? AND tenant_id = 0";
+    private DbTreeNode getBillBaseNode(Connection conn, String billNo, String ytenant_id) throws SQLException {
+        String sql = "SELECT id, cBillNo, cName, cFilterId FROM bill_base WHERE cBillNo = ? AND tenant_id = ?";
         
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, billNo);
+            stmt.setString(2, ytenant_id);
             
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
@@ -140,13 +141,14 @@ public class DbRelationServiceImpl implements DbRelationService {
     /**
      * 添加billentity_base子节点
      */
-    private void addBillEntityNodes(Connection conn, DbTreeNode parentNode) throws SQLException {
+    private void addBillEntityNodes(Connection conn, DbTreeNode parentNode, String ytenant_id) throws SQLException {
         String billId = parentNode.getId();
         String billNo = (String) parentNode.getAttribute("cBillNo");
-        String sql = "SELECT id, cName FROM billentity_base WHERE iBillId = ?";
+        String sql = "SELECT id, cName FROM billentity_base WHERE iBillId = ? AND tenant_id = ?";
         
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, billId);
+            stmt.setString(2, ytenant_id);
             
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -161,7 +163,7 @@ public class DbRelationServiceImpl implements DbRelationService {
                     parentNode.addChild(entityNode);
                     
                     // 添加billtemplate_base子节点 - 直接关联到billentity_base
-                    addBillTemplateNodes(conn, entityNode, billId, billNo);
+                    addBillTemplateNodes(conn, entityNode, billId, billNo, ytenant_id);
                 }
             }
         }
@@ -170,11 +172,12 @@ public class DbRelationServiceImpl implements DbRelationService {
     /**
      * 添加billtemplate_base子节点
      */
-    private void addBillTemplateNodes(Connection conn, DbTreeNode parentNode, String billId, String billNo) throws SQLException {
-        String sql = "SELECT id, cName FROM billtemplate_base WHERE iBillId = ?";
+    private void addBillTemplateNodes(Connection conn, DbTreeNode parentNode, String billId, String billNo, String ytenant_id) throws SQLException {
+        String sql = "SELECT id, cName FROM billtemplate_base WHERE iBillId = ? AND tenant_id = ?";
         
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, billId);
+            stmt.setString(2, ytenant_id);
             
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -189,7 +192,7 @@ public class DbRelationServiceImpl implements DbRelationService {
                     parentNode.addChild(templateNode);
                     
                     // 添加billtplgroup_base子节点 - 作为billtemplate_base的子节点
-                    addBillTplGroupNodes(conn, templateNode, billId, billNo);
+                    addBillTplGroupNodes(conn, templateNode, billId, billNo, ytenant_id);
                 }
             }
         }
@@ -198,12 +201,13 @@ public class DbRelationServiceImpl implements DbRelationService {
     /**
      * 添加billtplgroup_base子节点
      */
-    private void addBillTplGroupNodes(Connection conn, DbTreeNode parentNode, String billId, String billNo) throws SQLException {
-        String sql = "SELECT id, ccode, cName FROM billtplgroup_base WHERE iBillId = ? and iTplId = ?";
+    private void addBillTplGroupNodes(Connection conn, DbTreeNode parentNode, String billId, String billNo, String ytenant_id) throws SQLException {
+        String sql = "SELECT id, ccode, cName FROM billtplgroup_base WHERE iBillId = ? AND iTplId = ? AND tenant_id = ?";
         
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, billId);
             stmt.setString(2, parentNode.getId());
+            stmt.setString(3, ytenant_id);
             
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -229,10 +233,9 @@ public class DbRelationServiceImpl implements DbRelationService {
                         buttonNode.setAttribute("cBillNo", billNo);
                     }
                     buttonNode.setAttribute("ccode", ccode);
-//                    groupNode.addChild(buttonNode);
                     
                     // 添加bill_toolbar子节点（作为按钮的子节点）
-                    addBillToolbarNodes(conn, buttonNode, ccode, billNo,groupNode);
+                    addBillToolbarNodes(conn, buttonNode, ccode, billNo, ytenant_id, groupNode);
                     
                     // 创建billitem_base节点（作为billtplgroup_base的子节点）
                     DbTreeNode itemsNode = new DbTreeNode("billitem_base", "billitem_" + groupId);
@@ -245,7 +248,7 @@ public class DbRelationServiceImpl implements DbRelationService {
                     groupNode.addChild(itemsNode);
                     
                     // 添加实际的billitem_base子节点
-                    addBillItemNodes(conn, itemsNode, billId);
+                    addBillItemNodes(conn, itemsNode, billId, ytenant_id);
                 }
             }
         }
@@ -254,12 +257,13 @@ public class DbRelationServiceImpl implements DbRelationService {
     /**
      * 添加billitem_base子节点
      */
-    private void addBillItemNodes(Connection conn, DbTreeNode parentNode, String billId) throws SQLException {
-        String sql = "SELECT * FROM billitem_base WHERE iBillId = ? AND iBillTplGroupId = ? AND tenant_id = 0";
+    private void addBillItemNodes(Connection conn, DbTreeNode parentNode, String billId, String ytenant_id) throws SQLException {
+        String sql = "SELECT * FROM billitem_base WHERE iBillId = ? AND iBillTplGroupId = ? AND tenant_id = ?";
         
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, billId);
             stmt.setString(2, String.valueOf(parentNode.getAttribute("groupId")));
+            stmt.setString(3, ytenant_id);
             
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -277,17 +281,19 @@ public class DbRelationServiceImpl implements DbRelationService {
     /**
      * 添加bill_toolbar子节点
      */
-    private void addBillToolbarNodes(Connection conn, DbTreeNode parentNode, String parent, String billNo,DbTreeNode groupNode ) throws SQLException {
+    private void addBillToolbarNodes(Connection conn, DbTreeNode parentNode, String parent, String billNo, String ytenant_id, DbTreeNode groupNode) throws SQLException {
         if (billNo == null) {
             billNo = findBillNo(parentNode);  // 尝试从节点中获取billNo，作为备用方案
         }
         
         if (billNo != null) {
-            String sql = "SELECT id, name FROM bill_toolbar WHERE billnumber = ? AND parent = ? AND tenant_id = 0";
+            String sql = "SELECT id, name FROM bill_toolbar WHERE billnumber = ? AND parent = ? AND tenant_id = ?";
             
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setString(1, billNo);
                 stmt.setString(2, parent);
+                stmt.setString(3, ytenant_id);
+                
                 boolean isExist = false;
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
@@ -304,7 +310,7 @@ public class DbRelationServiceImpl implements DbRelationService {
                         isExist = true;
                         
                         // 添加bill_toolbaritem子节点
-                        addBillToolbarItemNodes(conn, toolbarNode, name, billNo);
+                        addBillToolbarItemNodes(conn, toolbarNode, name, billNo, ytenant_id);
                     }
                 }
                 if (isExist){
@@ -317,17 +323,18 @@ public class DbRelationServiceImpl implements DbRelationService {
     /**
      * 添加bill_toolbaritem子节点
      */
-    private void addBillToolbarItemNodes(Connection conn, DbTreeNode parentNode, String toolbar, String billNo) throws SQLException {
+    private void addBillToolbarItemNodes(Connection conn, DbTreeNode parentNode, String toolbar, String billNo, String ytenant_id) throws SQLException {
         if (billNo == null) {
             billNo = findBillNo(parentNode);  // 尝试从节点中获取billNo
         }
         
         if (billNo != null) {
-            String sql = "SELECT id, name, command FROM bill_toolbaritem WHERE billnumber = ? AND toolbar = ? AND tenant_id = 0";
+            String sql = "SELECT id, name, command FROM bill_toolbaritem WHERE billnumber = ? AND toolbar = ? AND tenant_id = ?";
             
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setString(1, billNo);
                 stmt.setString(2, toolbar);
+                stmt.setString(3, ytenant_id);
                 
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
@@ -343,7 +350,7 @@ public class DbRelationServiceImpl implements DbRelationService {
                         // 添加bill_command子节点
                         String command = rs.getString("command");
                         if (command != null && !command.isEmpty()) {
-                            addBillCommandNodes(conn, itemNode, command, billNo);
+                            addBillCommandNodes(conn, itemNode, command, billNo, ytenant_id);
                         }
                     }
                 }
@@ -354,17 +361,18 @@ public class DbRelationServiceImpl implements DbRelationService {
     /**
      * 添加bill_command子节点
      */
-    private void addBillCommandNodes(Connection conn, DbTreeNode parentNode, String command, String billNo) throws SQLException {
+    private void addBillCommandNodes(Connection conn, DbTreeNode parentNode, String command, String billNo, String ytenant_id) throws SQLException {
         if (billNo == null) {
             billNo = findBillNo(parentNode);  // 尝试从节点中获取billNo
         }
         
         if (billNo != null && command != null) {
-            String sql = "SELECT id, name FROM bill_command WHERE billnumber = ? AND name = ? AND tenant_id = 0";
+            String sql = "SELECT id, name FROM bill_command WHERE billnumber = ? AND name = ? AND tenant_id = ?";
             
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setString(1, billNo);
                 stmt.setString(2, command);
+                stmt.setString(3, ytenant_id);
                 
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
@@ -384,7 +392,7 @@ public class DbRelationServiceImpl implements DbRelationService {
     /**
      * 添加pb_meta_filters子节点 - 作为过滤区
      */
-    private void addMetaFilterNodes(Connection conn, DbTreeNode parentNode) throws SQLException {
+    private void addMetaFilterNodes(Connection conn, DbTreeNode parentNode, String ytenant_id) throws SQLException {
         String filterId = String.valueOf(parentNode.getAttribute("cFilterId"));
         
         if (filterId != null && !"null".equals(filterId)) {
@@ -393,10 +401,11 @@ public class DbRelationServiceImpl implements DbRelationService {
             filterAreaNode.setAttribute("cName", "过滤区");
             parentNode.addChild(filterAreaNode);
             
-            String sql = "SELECT id, filterDesc FROM pb_meta_filters WHERE id = ?";
+            String sql = "SELECT id, filterDesc FROM pb_meta_filters WHERE id = ? AND tenant_id = ?";
             
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setString(1, filterId);
+                stmt.setString(2, ytenant_id);
                 
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) {
@@ -407,10 +416,10 @@ public class DbRelationServiceImpl implements DbRelationService {
                         filterAreaNode.addChild(filterNode);
                         
                         // 添加pb_meta_filter_item子节点
-                        addMetaFilterItemNodes(conn, filterNode, filterId);
+                        addMetaFilterItemNodes(conn, filterNode, filterId, ytenant_id);
                         
                         // 添加pb_filter_solution子节点
-                        addFilterSolutionNodes(conn, filterNode, filterId);
+                        addFilterSolutionNodes(conn, filterNode, filterId, ytenant_id);
                     }
                 }
             }
@@ -420,11 +429,12 @@ public class DbRelationServiceImpl implements DbRelationService {
     /**
      * 添加pb_meta_filter_item子节点
      */
-    private void addMetaFilterItemNodes(Connection conn, DbTreeNode parentNode, String filtersId) throws SQLException {
-        String sql = "SELECT id, itemTitle FROM pb_meta_filter_item WHERE filtersId = ? ORDER BY tenant_id";
+    private void addMetaFilterItemNodes(Connection conn, DbTreeNode parentNode, String filtersId, String ytenant_id) throws SQLException {
+        String sql = "SELECT id, itemTitle FROM pb_meta_filter_item WHERE filtersId = ? AND tenant_id = ?";
         
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, filtersId);
+            stmt.setString(2, ytenant_id);
             
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -441,11 +451,12 @@ public class DbRelationServiceImpl implements DbRelationService {
     /**
      * 添加pb_filter_solution子节点
      */
-    private void addFilterSolutionNodes(Connection conn, DbTreeNode parentNode, String filtersId) throws SQLException {
-        String sql = "SELECT id, solutionName FROM pb_filter_solution WHERE filtersId = ? AND tenant_id = 0";
+    private void addFilterSolutionNodes(Connection conn, DbTreeNode parentNode, String filtersId, String ytenant_id) throws SQLException {
+        String sql = "SELECT id, solutionName FROM pb_filter_solution WHERE filtersId = ? AND tenant_id = ?";
         
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, filtersId);
+            stmt.setString(2, ytenant_id);
             
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -456,7 +467,7 @@ public class DbRelationServiceImpl implements DbRelationService {
                     parentNode.addChild(solutionNode);
                     
                     // 添加pb_filter_solution_common子节点
-                    addFilterSolutionCommonNodes(conn, solutionNode, rs.getString("id"));
+                    addFilterSolutionCommonNodes(conn, solutionNode, rs.getString("id"), ytenant_id);
                 }
             }
         }
@@ -465,11 +476,12 @@ public class DbRelationServiceImpl implements DbRelationService {
     /**
      * 添加pb_filter_solution_common子节点
      */
-    private void addFilterSolutionCommonNodes(Connection conn, DbTreeNode parentNode, String solutionId) throws SQLException {
-        String sql = "SELECT id, itemTitle FROM pb_filter_solution_common WHERE solutionId = ?";
+    private void addFilterSolutionCommonNodes(Connection conn, DbTreeNode parentNode, String solutionId, String ytenant_id) throws SQLException {
+        String sql = "SELECT id, itemTitle FROM pb_filter_solution_common WHERE solutionId = ? AND tenant_id = ?";
         
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, solutionId);
+            stmt.setString(2, ytenant_id);
             
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -486,7 +498,7 @@ public class DbRelationServiceImpl implements DbRelationService {
     /**
      * 查询表详情
      */
-    private Map<String, Object> queryTableDetails(Connection conn, String tableName, String id) throws SQLException {
+    private Map<String, Object> queryTableDetails(Connection conn, String tableName, String id, String ytenant_id) throws SQLException {
         Map<String, Object> data = new HashMap<>();
         
         if (tableName == null || id == null) {
@@ -494,10 +506,11 @@ public class DbRelationServiceImpl implements DbRelationService {
         }
         
         // 构建查询SQL
-        String sql = String.format("SELECT * FROM %s WHERE id = ?", tableName);
+        String sql = String.format("SELECT * FROM %s WHERE id = ? AND tenant_id = ?", tableName);
         
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, id);
+            stmt.setString(2, ytenant_id);
             
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {

@@ -154,6 +154,7 @@ async function performSearch() {
     const environment = dbEnvironmentSelect.value;
     const dbName = dbNameInput.value.trim();
     const billNo = tableCodeInput.value.trim();
+    const ytenant_id = document.getElementById('ytenant_id').value.trim() || "0"; // 获取租户ID，默认为0
     
     // 验证输入
     if (!billNo) {
@@ -181,7 +182,8 @@ async function performSearch() {
                 environment, 
                 dbName, 
                 billNo, 
-                currentDbConfig
+                currentDbConfig,
+                ytenant_id  // 添加租户ID参数
             );
             
             // 隐藏加载指示器
@@ -429,6 +431,7 @@ function renderGraph(data) {
                     const environment = dbEnvironmentSelect.value;
                     const dbName = dbNameInput.value.trim();
                     const currentDbConfig = dbConfigs[environment];
+                    const ytenant_id = document.getElementById('ytenant_id').value.trim() || "0"; // 获取租户ID
                     
                     // 防止获取非表节点的详情
                     if (!params.data.tableName || params.data.tableName.includes('_group')) {
@@ -447,7 +450,8 @@ function renderGraph(data) {
                         environment,
                         dbName,
                         tableName: params.data.tableName,
-                        id: params.data.id
+                        id: params.data.id,
+                        ytenant_id // 添加租户ID
                     });
                     
                     // 尝试获取节点详细信息
@@ -457,7 +461,8 @@ function renderGraph(data) {
                             dbName,
                             params.data.tableName,
                             params.data.id,
-                            currentDbConfig
+                            currentDbConfig,
+                            ytenant_id // 添加租户ID参数
                         );
                         showNodeDetails(details);
                     } catch (error) {
@@ -841,6 +846,7 @@ function initializeCharts() {
                     const environment = dbEnvironmentSelect.value;
                     const dbName = dbNameInput.value.trim();
                     const currentDbConfig = dbConfigs[environment];
+                    const ytenant_id = document.getElementById('ytenant_id').value.trim() || "0"; // 获取租户ID
                     
                     // 防止获取非表节点的详情
                     if (!params.data.tableName || params.data.tableName.includes('_group')) {
@@ -859,7 +865,8 @@ function initializeCharts() {
                         environment,
                         dbName,
                         tableName: params.data.tableName,
-                        id: params.data.id
+                        id: params.data.id,
+                        ytenant_id // 添加租户ID
                     });
                     
                     // 尝试获取节点详细信息
@@ -869,7 +876,8 @@ function initializeCharts() {
                             dbName,
                             params.data.tableName,
                             params.data.id,
-                            currentDbConfig
+                            currentDbConfig,
+                            ytenant_id // 添加租户ID参数
                         );
                         showNodeDetails(details);
                     } catch (error) {

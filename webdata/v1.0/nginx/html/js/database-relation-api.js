@@ -12,9 +12,10 @@ const API_BASE_URL = 'http://127.0.0.1:8090/api/v1';
  * @param {string} dbName 数据库名称
  * @param {string} billNo 表单编码
  * @param {Object} dbConfig 数据库配置信息
+ * @param {string} ytenant_id 租户ID
  * @returns {Promise} 返回表关联数据
  */
-async function fetchDbRelationTree(environment, dbName, billNo, dbConfig) {
+async function fetchDbRelationTree(environment, dbName, billNo, dbConfig, ytenant_id) {
     try {
         const url = `${API_BASE_URL}/db-relation/tree`;
         
@@ -22,6 +23,7 @@ async function fetchDbRelationTree(environment, dbName, billNo, dbConfig) {
             environment: environment,
             dbName: dbName,
             billNo: billNo,
+            ytenant_id: ytenant_id,
             dbConfig: dbConfig
         };
         
@@ -67,9 +69,10 @@ async function fetchDbRelationTree(environment, dbName, billNo, dbConfig) {
  * @param {string} tableName 表名
  * @param {string} id 节点ID
  * @param {Object} dbConfig 数据库配置
+ * @param {string} ytenant_id 租户ID
  * @returns {Promise} 返回表详情
  */
-async function fetchTableDetails(environment, dbName, tableName, id, dbConfig) {
+async function fetchTableDetails(environment, dbName, tableName, id, dbConfig, ytenant_id) {
     try {
         const url = `${API_BASE_URL}/db-relation/table-details`;
         
@@ -91,6 +94,7 @@ async function fetchTableDetails(environment, dbName, tableName, id, dbConfig) {
             dbName: dbName,
             tableName: tableName,
             id: id,
+            ytenant_id: ytenant_id,
             dbConfig: dbConfig
         };
         
@@ -99,6 +103,7 @@ async function fetchTableDetails(environment, dbName, tableName, id, dbConfig) {
             dbName,
             tableName,
             id,
+            ytenant_id,
             dbConfig: { ...dbConfig, password: '******' } // 隐藏密码
         });
         

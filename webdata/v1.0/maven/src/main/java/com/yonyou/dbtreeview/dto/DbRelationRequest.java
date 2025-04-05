@@ -10,17 +10,19 @@ public class DbRelationRequest {
     private String billNo;
     private String tableName; // 表名
     private String id;        // 节点ID
+    private String ytenant_id; // 租户ID
     private DbConfigDTO dbConfig;
     
     public DbRelationRequest() {
     }
     
-    public DbRelationRequest(String environment, String dbName, String billNo, String tableName, String id, DbConfigDTO dbConfig) {
+    public DbRelationRequest(String environment, String dbName, String billNo, String tableName, String id, String ytenant_id, DbConfigDTO dbConfig) {
         this.environment = environment;
         this.dbName = dbName;
         this.billNo = billNo;
         this.tableName = tableName;
         this.id = id;
+        this.ytenant_id = ytenant_id;
         this.dbConfig = dbConfig;
     }
 
@@ -63,6 +65,14 @@ public class DbRelationRequest {
     public void setId(String id) {
         this.id = id;
     }
+    
+    public String getYtenant_id() {
+        return ytenant_id != null ? ytenant_id : "0";
+    }
+    
+    public void setYtenant_id(String ytenant_id) {
+        this.ytenant_id = ytenant_id;
+    }
 
     public DbConfigDTO getDbConfig() {
         return dbConfig;
@@ -80,6 +90,7 @@ public class DbRelationRequest {
                 ", billNo='" + billNo + '\'' +
                 ", tableName='" + tableName + '\'' +
                 ", id='" + id + '\'' +
+                ", ytenant_id='" + ytenant_id + '\'' +
                 ", dbConfig=" + (dbConfig != null ? "[已设置]" : "null") +
                 '}';
     }
