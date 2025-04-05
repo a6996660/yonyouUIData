@@ -73,24 +73,32 @@ public class DbRelationServiceImpl implements DbRelationService {
     }
     
     @Override
-    public boolean updateTableData(String environment, String dbName, String tableName, String id, String ytenant_id, Map<String, Object> editedFields, DbConfigDTO dbConfig) {
+    public Map<String, Object> updateTableData(String environment, String dbName, String tableName, String id, String ytenant_id, Map<String, Object> editedFields, DbConfigDTO dbConfig) {
         Connection conn = null;
+        Map<String, Object> result = new HashMap<>();
+        String sqlStatement = "";
         
         try {
             // 验证参数
             if (tableName == null || tableName.trim().isEmpty()) {
                 logger.error("更新表数据失败：表名为空");
-                return false;
+                result.put("success", false);
+                result.put("sql", "");
+                return result;
             }
             
             if (id == null || id.trim().isEmpty()) {
                 logger.error("更新表数据失败：ID为空");
-                return false;
+                result.put("success", false);
+                result.put("sql", "");
+                return result;
             }
             
             if (editedFields == null || editedFields.isEmpty()) {
                 logger.error("更新表数据失败：没有需要更新的字段");
-                return false;
+                result.put("success", false);
+                result.put("sql", "");
+                return result;
             }
             
             // 连接数据库
@@ -115,8 +123,36 @@ public class DbRelationServiceImpl implements DbRelationService {
             // 添加WHERE条件
             sqlBuilder.append(" WHERE id = ? AND ytenant_id = ?");
             
+            // 用于显示的完整SQL（包含值）
+            StringBuilder displaySqlBuilder = new StringBuilder(sqlBuilder.toString());
+            int placeholderIndex = displaySqlBuilder.indexOf("?");
+            
+            // 构建包含实际值的SQL用于显示
+            for (Object value : editedFields.values()) {
+                String valueStr;
+                if (value == null) {
+                    valueStr = "NULL";
+                } else if (value instanceof String) {
+                    valueStr = "'" + value.toString().replace("'", "''") + "'";
+                } else {
+                    valueStr = value.toString();
+                }
+                
+                displaySqlBuilder.replace(placeholderIndex, placeholderIndex + 1, valueStr);
+                placeholderIndex = displaySqlBuilder.indexOf("?", placeholderIndex + valueStr.length());
+            }
+            
+            // 替换WHERE条件中的占位符
+            displaySqlBuilder.replace(placeholderIndex, placeholderIndex + 1, "'" + id + "'");
+            placeholderIndex = displaySqlBuilder.indexOf("?", placeholderIndex + id.length() + 2);
+            displaySqlBuilder.replace(placeholderIndex, placeholderIndex + 1, "'" + ytenant_id + "'");
+            
+            // 保存用于显示的SQL
+            sqlStatement = displaySqlBuilder.toString();
+            
             // 日志记录SQL语句（不包含具体值以保护敏感数据）
             logger.info("执行更新SQL: {}", sqlBuilder.toString());
+            logger.debug("SQL参数值: id={}, ytenant_id={}, 字段值={}", id, ytenant_id, editedFields);
             
             try (PreparedStatement stmt = conn.prepareStatement(sqlBuilder.toString())) {
                 // 设置参数值
@@ -134,11 +170,16 @@ public class DbRelationServiceImpl implements DbRelationService {
                 int rowsAffected = stmt.executeUpdate();
                 logger.info("更新表 {} 数据成功，影响 {} 行", tableName, rowsAffected);
                 
-                return rowsAffected > 0;
+                result.put("success", rowsAffected > 0);
+                result.put("sql", sqlStatement);
+                return result;
             }
         } catch (Exception e) {
             logger.error("更新表数据失败", e);
-            return false;
+            result.put("success", false);
+            result.put("sql", sqlStatement);
+            result.put("error", e.getMessage());
+            return result;
         } finally {
             closeConnection(conn);
         }

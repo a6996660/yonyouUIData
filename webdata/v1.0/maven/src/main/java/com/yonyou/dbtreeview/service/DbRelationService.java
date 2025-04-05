@@ -46,7 +46,7 @@ public interface DbRelationService {
      * @param ytenant_id 租户ID
      * @param editedFields 已编辑的字段，键为字段名，值为新值
      * @param dbConfig 数据库配置
-     * @return 是否更新成功
+     * @return 返回包含执行SQL的Map，键为"success"表示是否成功，键为"sql"表示执行的SQL语句
      */
-    boolean updateTableData(String environment, String dbName, String tableName, String id, String ytenant_id, Map<String, Object> editedFields, DbConfigDTO dbConfig);
+    Map<String, Object> updateTableData(String environment, String dbName, String tableName, String id, String ytenant_id, Map<String, Object> editedFields, DbConfigDTO dbConfig);
 } 

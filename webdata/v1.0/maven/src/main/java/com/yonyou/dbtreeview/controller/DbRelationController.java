@@ -11,6 +11,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 /**
  * 数据库关联关系控制器
  */
@@ -151,7 +153,7 @@ public class DbRelationController {
             dbConfigDTO.setPassword(request.getDbConfig().getPassword());
             
             // 调用服务更新数据
-            boolean success = dbRelationService.updateTableData(
+            Map<String, Object> result = dbRelationService.updateTableData(
                 request.getEnvironment(),
                 request.getDbName(),
                 request.getTableName(),
@@ -161,10 +163,13 @@ public class DbRelationController {
                 dbConfigDTO
             );
             
+            Boolean success = (Boolean) result.get("success");
+            String sql = (String) result.get("sql");
+            
             if (success) {
-                return ApiResponse.success("数据更新成功");
+                return ApiResponse.success("数据更新成功", sql);
             } else {
-                return ApiResponse.error("数据更新失败");
+                return ApiResponse.error("数据更新失败", sql);
             }
         } catch (Exception e) {
             logger.error("更新表数据失败", e);
