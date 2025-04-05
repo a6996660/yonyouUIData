@@ -33,6 +33,9 @@ public class DbRelationServiceImpl implements DbRelationService {
             DbTreeNode rootNode = getBillBaseNode(conn, billNo);
             
             if (rootNode != null) {
+                // 保存billNo到根节点，使其易于传递
+                rootNode.setAttribute("cBillNo", billNo);
+                
                 // 添加billentity_base子节点
                 addBillEntityNodes(conn, rootNode);
                 
@@ -139,6 +142,7 @@ public class DbRelationServiceImpl implements DbRelationService {
      */
     private void addBillEntityNodes(Connection conn, DbTreeNode parentNode) throws SQLException {
         String billId = parentNode.getId();
+        String billNo = (String) parentNode.getAttribute("cBillNo");
         String sql = "SELECT id, cName FROM billentity_base WHERE iBillId = ?";
         
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -148,12 +152,16 @@ public class DbRelationServiceImpl implements DbRelationService {
                 while (rs.next()) {
                     DbTreeNode entityNode = new DbTreeNode("billentity_base", rs.getString("id"));
                     entityNode.setAttribute("cName", rs.getString("cName"));
+                    // 传递billNo属性
+                    if (billNo != null) {
+                        entityNode.setAttribute("cBillNo", billNo);
+                    }
                     
                     // 添加子节点
                     parentNode.addChild(entityNode);
                     
-                    // 添加billtemplate_base子节点
-                    addBillTemplateNodes(conn, entityNode, billId);
+                    // 添加billtemplate_base子节点 - 直接关联到billentity_base
+                    addBillTemplateNodes(conn, entityNode, billId, billNo);
                 }
             }
         }
@@ -162,7 +170,7 @@ public class DbRelationServiceImpl implements DbRelationService {
     /**
      * 添加billtemplate_base子节点
      */
-    private void addBillTemplateNodes(Connection conn, DbTreeNode parentNode, String billId) throws SQLException {
+    private void addBillTemplateNodes(Connection conn, DbTreeNode parentNode, String billId, String billNo) throws SQLException {
         String sql = "SELECT id, cName FROM billtemplate_base WHERE iBillId = ?";
         
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -172,12 +180,16 @@ public class DbRelationServiceImpl implements DbRelationService {
                 while (rs.next()) {
                     DbTreeNode templateNode = new DbTreeNode("billtemplate_base", rs.getString("id"));
                     templateNode.setAttribute("cName", rs.getString("cName"));
+                    // 传递billNo属性
+                    if (billNo != null) {
+                        templateNode.setAttribute("cBillNo", billNo);
+                    }
                     
                     // 添加子节点
                     parentNode.addChild(templateNode);
                     
-                    // 添加billtplgroup_base子节点
-                    addBillTplGroupNodes(conn, templateNode, billId);
+                    // 添加billtplgroup_base子节点 - 作为billtemplate_base的子节点
+                    addBillTplGroupNodes(conn, templateNode, billId, billNo);
                 }
             }
         }
@@ -186,26 +198,54 @@ public class DbRelationServiceImpl implements DbRelationService {
     /**
      * 添加billtplgroup_base子节点
      */
-    private void addBillTplGroupNodes(Connection conn, DbTreeNode parentNode, String billId) throws SQLException {
-        String sql = "SELECT id, ccode, cName FROM billtplgroup_base WHERE iBillId = ?";
+    private void addBillTplGroupNodes(Connection conn, DbTreeNode parentNode, String billId, String billNo) throws SQLException {
+        String sql = "SELECT id, ccode, cName FROM billtplgroup_base WHERE iBillId = ? and iTplId = ?";
         
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, billId);
+            stmt.setString(2, parentNode.getId());
             
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    DbTreeNode groupNode = new DbTreeNode("billtplgroup_base", rs.getString("id"));
-                    groupNode.setAttribute("ccode", rs.getString("ccode"));
+                    String groupId = rs.getString("id");
+                    String ccode = rs.getString("ccode");
+                    
+                    DbTreeNode groupNode = new DbTreeNode("billtplgroup_base", groupId);
+                    groupNode.setAttribute("ccode", ccode);
                     groupNode.setAttribute("cName", rs.getString("cName"));
+                    // 传递billNo属性
+                    if (billNo != null) {
+                        groupNode.setAttribute("cBillNo", billNo);
+                    }
                     
                     // 添加子节点
                     parentNode.addChild(groupNode);
                     
-                    // 添加billitem_base子节点
-                    addBillItemNodes(conn, groupNode, billId);
+                    // 创建按钮节点（作为billtplgroup_base的子节点）
+                    DbTreeNode buttonNode = new DbTreeNode("按钮", "button_" + groupId);
+                    buttonNode.setAttribute("cName", "按钮");
+                    // 传递billNo和ccode属性
+                    if (billNo != null) {
+                        buttonNode.setAttribute("cBillNo", billNo);
+                    }
+                    buttonNode.setAttribute("ccode", ccode);
+//                    groupNode.addChild(buttonNode);
                     
-                    // 添加bill_toolbar子节点
-                    addBillToolbarNodes(conn, groupNode, rs.getString("ccode"));
+                    // 添加bill_toolbar子节点（作为按钮的子节点）
+                    addBillToolbarNodes(conn, buttonNode, ccode, billNo,groupNode);
+                    
+                    // 创建billitem_base节点（作为billtplgroup_base的子节点）
+                    DbTreeNode itemsNode = new DbTreeNode("billitem_base", "billitem_" + groupId);
+                    itemsNode.setAttribute("cName", "billitem_base");
+                    // 传递billNo属性
+                    if (billNo != null) {
+                        itemsNode.setAttribute("cBillNo", billNo);
+                        itemsNode.setAttribute("groupId", groupId);
+                    }
+                    groupNode.addChild(itemsNode);
+                    
+                    // 添加实际的billitem_base子节点
+                    addBillItemNodes(conn, itemsNode, billId);
                 }
             }
         }
@@ -215,10 +255,11 @@ public class DbRelationServiceImpl implements DbRelationService {
      * 添加billitem_base子节点
      */
     private void addBillItemNodes(Connection conn, DbTreeNode parentNode, String billId) throws SQLException {
-        String sql = "SELECT id, cName, cShowCaption FROM billitem_base WHERE iBillId = ? AND tenant_id = 0";
+        String sql = "SELECT * FROM billitem_base WHERE iBillId = ? AND iBillTplGroupId = ? AND tenant_id = 0";
         
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, billId);
+            stmt.setString(2, String.valueOf(parentNode.getAttribute("groupId")));
             
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -236,14 +277,9 @@ public class DbRelationServiceImpl implements DbRelationService {
     /**
      * 添加bill_toolbar子节点
      */
-    private void addBillToolbarNodes(Connection conn, DbTreeNode parentNode, String parent) throws SQLException {
-        String billNo = String.valueOf(parentNode.getAttributes().get("cBillNo"));
+    private void addBillToolbarNodes(Connection conn, DbTreeNode parentNode, String parent, String billNo,DbTreeNode groupNode ) throws SQLException {
         if (billNo == null) {
-            // 从根节点获取billNo
-            DbTreeNode rootNode = findRootNode(parentNode);
-            if (rootNode != null) {
-                billNo = String.valueOf(rootNode.getAttribute("cBillNo"));
-            }
+            billNo = findBillNo(parentNode);  // 尝试从节点中获取billNo，作为备用方案
         }
         
         if (billNo != null) {
@@ -252,18 +288,27 @@ public class DbRelationServiceImpl implements DbRelationService {
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setString(1, billNo);
                 stmt.setString(2, parent);
-                
+                boolean isExist = false;
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
-                        DbTreeNode toolbarNode = new DbTreeNode("bill_toolbar", rs.getString("id"));
-                        toolbarNode.setAttribute("name", rs.getString("name"));
+                        String toolbarId = rs.getString("id");
+                        String name = rs.getString("name");
+                        
+                        DbTreeNode toolbarNode = new DbTreeNode("bill_toolbar", toolbarId);
+                        toolbarNode.setAttribute("name", name);
+                        // 传递billNo属性
+                        toolbarNode.setAttribute("cBillNo", billNo);
                         
                         // 添加子节点
                         parentNode.addChild(toolbarNode);
+                        isExist = true;
                         
                         // 添加bill_toolbaritem子节点
-                        addBillToolbarItemNodes(conn, toolbarNode, rs.getString("name"));
+                        addBillToolbarItemNodes(conn, toolbarNode, name, billNo);
                     }
+                }
+                if (isExist){
+                    groupNode.addChild(parentNode);
                 }
             }
         }
@@ -272,8 +317,10 @@ public class DbRelationServiceImpl implements DbRelationService {
     /**
      * 添加bill_toolbaritem子节点
      */
-    private void addBillToolbarItemNodes(Connection conn, DbTreeNode parentNode, String toolbar) throws SQLException {
-        String billNo = findBillNo(parentNode);
+    private void addBillToolbarItemNodes(Connection conn, DbTreeNode parentNode, String toolbar, String billNo) throws SQLException {
+        if (billNo == null) {
+            billNo = findBillNo(parentNode);  // 尝试从节点中获取billNo
+        }
         
         if (billNo != null) {
             String sql = "SELECT id, name, command FROM bill_toolbaritem WHERE billnumber = ? AND toolbar = ? AND tenant_id = 0";
@@ -287,12 +334,17 @@ public class DbRelationServiceImpl implements DbRelationService {
                         DbTreeNode itemNode = new DbTreeNode("bill_toolbaritem", rs.getString("id"));
                         itemNode.setAttribute("name", rs.getString("name"));
                         itemNode.setAttribute("command", rs.getString("command"));
+                        // 传递billNo属性
+                        itemNode.setAttribute("cBillNo", billNo);
                         
                         // 添加子节点
                         parentNode.addChild(itemNode);
                         
                         // 添加bill_command子节点
-                        addBillCommandNodes(conn, itemNode, rs.getString("command"));
+                        String command = rs.getString("command");
+                        if (command != null && !command.isEmpty()) {
+                            addBillCommandNodes(conn, itemNode, command, billNo);
+                        }
                     }
                 }
             }
@@ -302,8 +354,10 @@ public class DbRelationServiceImpl implements DbRelationService {
     /**
      * 添加bill_command子节点
      */
-    private void addBillCommandNodes(Connection conn, DbTreeNode parentNode, String command) throws SQLException {
-        String billNo = findBillNo(parentNode);
+    private void addBillCommandNodes(Connection conn, DbTreeNode parentNode, String command, String billNo) throws SQLException {
+        if (billNo == null) {
+            billNo = findBillNo(parentNode);  // 尝试从节点中获取billNo
+        }
         
         if (billNo != null && command != null) {
             String sql = "SELECT id, name FROM bill_command WHERE billnumber = ? AND name = ? AND tenant_id = 0";
@@ -316,6 +370,8 @@ public class DbRelationServiceImpl implements DbRelationService {
                     while (rs.next()) {
                         DbTreeNode commandNode = new DbTreeNode("bill_command", rs.getString("id"));
                         commandNode.setAttribute("name", rs.getString("name"));
+                        // 传递billNo属性
+                        commandNode.setAttribute("cBillNo", billNo);
                         
                         // 添加子节点
                         parentNode.addChild(commandNode);
@@ -326,12 +382,17 @@ public class DbRelationServiceImpl implements DbRelationService {
     }
     
     /**
-     * 添加pb_meta_filters子节点
+     * 添加pb_meta_filters子节点 - 作为过滤区
      */
     private void addMetaFilterNodes(Connection conn, DbTreeNode parentNode) throws SQLException {
         String filterId = String.valueOf(parentNode.getAttribute("cFilterId"));
         
         if (filterId != null && !"null".equals(filterId)) {
+            // 创建过滤区节点
+            DbTreeNode filterAreaNode = new DbTreeNode("过滤区", "filter_area");
+            filterAreaNode.setAttribute("cName", "过滤区");
+            parentNode.addChild(filterAreaNode);
+            
             String sql = "SELECT id, filterDesc FROM pb_meta_filters WHERE id = ?";
             
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -342,8 +403,8 @@ public class DbRelationServiceImpl implements DbRelationService {
                         DbTreeNode filterNode = new DbTreeNode("pb_meta_filters", rs.getString("id"));
                         filterNode.setAttribute("filterDesc", rs.getString("filterDesc"));
                         
-                        // 添加子节点
-                        parentNode.addChild(filterNode);
+                        // 添加到过滤区节点下
+                        filterAreaNode.addChild(filterNode);
                         
                         // 添加pb_meta_filter_item子节点
                         addMetaFilterItemNodes(conn, filterNode, filterId);
@@ -459,43 +520,37 @@ public class DbRelationServiceImpl implements DbRelationService {
      * 查找根节点
      */
     private DbTreeNode findRootNode(DbTreeNode node) {
-        if (node == null) {
-            return null;
-        }
-        
-        if ("bill_base".equals(node.getTableName())) {
-            return node;
-        }
-        
-        // TODO: 实现向上查找根节点的逻辑
-        // 由于当前实现是递归构建树，无法向上查找父节点
-        // 在实际项目中，可能需要双向引用或使用其他策略
-        
+        // 这里由于缺少向上查找的能力，我们直接使用查找billNo逻辑
+        // 在实际项目中，可能需要维护父节点引用
         return null;
     }
     
     /**
      * 查找表单编码
+     * 注意：此方法在当前实现中有局限性，因为我们没有维护父节点引用
+     * 在实际项目中，应该改进树结构实现或使用其他策略传递billNo
      */
     private String findBillNo(DbTreeNode node) {
         if (node == null) {
             return null;
         }
         
-        // 尝试从当前节点获取
+        // 直接尝试从节点属性获取billNo
         Object billNo = node.getAttribute("cBillNo");
-        if (billNo != null) {
-            return String.valueOf(billNo);
+        if (billNo != null && !"null".equals(billNo.toString())) {
+            return billNo.toString();
         }
         
-        // 尝试从根节点获取
-        DbTreeNode rootNode = findRootNode(node);
-        if (rootNode != null) {
-            billNo = rootNode.getAttribute("cBillNo");
-            if (billNo != null) {
-                return String.valueOf(billNo);
+        // 如果是bill_base节点，从cBillNo属性获取
+        if ("bill_base".equals(node.getTableName())) {
+            billNo = node.getAttribute("cBillNo");
+            if (billNo != null && !"null".equals(billNo.toString())) {
+                return billNo.toString();
             }
         }
+        
+        // 在当前实现中，我们依赖开始创建树时已经把billNo传递给了所有需要的节点
+        // 此方法是一个fallback，实际应用中应该在每个节点创建时就把billNo作为属性存储
         
         return null;
     }
