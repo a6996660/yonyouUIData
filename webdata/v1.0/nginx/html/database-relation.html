@@ -280,7 +280,7 @@
             
             <div class="button-group">
                 <button id="configButton" class="button bg-gray-600 hover:bg-gray-500">配置</button>
-                <button id="searchButton" class="button">搜索</button>
+                <button id="searchButton" class="button bg-blue-600 hover:bg-blue-500" title="查询数据库关联树形结构">查询</button>
             </div>
             
             <div class="loading" id="loadingIndicator">
@@ -320,6 +320,29 @@
                 </div>
                 <div style="margin-top: 8px;">
                     <button id="apply-layout" class="button bg-blue-600 hover:bg-blue-500" style="font-size: 11px; padding: 2px 6px; height: auto;">应用布局</button>
+                </div>
+            </div>
+            
+            <!-- 节点搜索框 -->
+            <div class="search-container" id="nodeSearchContainer" style="position: absolute; bottom: 20px; left: 20px; z-index: 100; background-color: rgba(48, 49, 52, 0.9); padding: 12px; border-radius: 6px; width: 320px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); border: 1px solid #5f6368;">
+                <div style="margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#8ab4f8" viewBox="0 0 16 16" style="margin-right: 8px;">
+                            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                        </svg>
+                        <span style="color: #8ab4f8; font-weight: 500;">节点名称搜索</span>
+                    </div>
+                    <span style="color: #aaa; font-size: 11px; font-style: italic;">在当前数据中搜索</span>
+                </div>
+                <div style="display: flex;">
+                    <input type="text" id="nodeSearchInput" placeholder="输入节点名称..." style="flex-grow: 1; background-color: #303134; border: 1px solid #5f6368; border-radius: 4px; padding: 6px 10px; color: #e8eaed; font-size: 13px;">
+                    <button id="nodeSearchButton" style="margin-left: 8px; background-color: #8ab4f8; border: none; border-radius: 4px; padding: 0 12px; color: #202124; font-size: 13px; cursor: pointer; font-weight: 500;">搜索</button>
+                </div>
+                <div id="searchResultSummary" style="margin-top: 8px; font-size: 12px; color: #aaa; display: none;">
+                    找到 <span id="searchResultCount">0</span> 个匹配节点
+                </div>
+                <div id="searchResults" style="margin-top: 4px; max-height: 200px; overflow-y: auto;">
+                    <!-- 搜索结果将在这里动态生成 -->
                 </div>
             </div>
         </div>
