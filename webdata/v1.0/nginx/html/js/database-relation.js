@@ -505,18 +505,31 @@ function renderGraph(data) {
                         ytenant_id // 添加租户ID
                     });
                     
+                    // 显示加载提示
+                    loadingIndicator.style.display = 'block';
+                    loadingIndicator.textContent = '正在加载节点详情...';
+                    
                     // 尝试获取节点详细信息
                     try {
-                        const details = await fetchTableDetails(
-                            environment,
-                            dbName,
-                            params.data.tableName,
-                            params.data.id,
-                            currentDbConfig,
-                            ytenant_id // 添加租户ID参数
-                        );
+                        const requestData = {
+                            environment: environment,
+                            dbName: dbName,
+                            tableName: params.data.tableName,
+                            id: params.data.id,
+                            ytenant_id: ytenant_id,
+                            dbConfig: currentDbConfig
+                        };
+                        
+                        const details = await window.fetchTableDetails(requestData);
+                        
+                        // 隐藏加载提示
+                        loadingIndicator.style.display = 'none';
+                        
                         showNodeDetails(details);
                     } catch (error) {
+                        // 隐藏加载提示
+                        loadingIndicator.style.display = 'none';
+                        
                         console.warn('无法获取详细信息，使用节点数据:', error);
                         // 使用现有节点数据显示
                         showNodeDetails({ 
@@ -656,6 +669,12 @@ function showNodeDetails(details) {
         return;
     }
     
+    // 存储当前正在编辑的节点信息
+    currentEditingNodeId = details.data.id;
+    currentEditingTableName = details.tableName;
+    currentEditingTenantId = details.data.tenant_id || '0';
+    currentEditingDbName = document.getElementById('dbName').value.trim();
+    
     // 创建关闭按钮
     const closeButton = document.createElement('button');
     closeButton.textContent = '×';
@@ -684,13 +703,47 @@ function showNodeDetails(details) {
         hideNodeDetails();
     });
     
+    // 创建编辑按钮
+    const editButton = document.createElement('button');
+    editButton.textContent = '编辑';
+    editButton.className = 'button bg-blue-600 hover:bg-blue-500';
+    editButton.style.position = 'absolute';
+    editButton.style.right = '40px';
+    editButton.style.top = '10px';
+    editButton.style.fontSize = '12px';
+    editButton.style.padding = '2px 10px';
+    editButton.style.cursor = 'pointer';
+    editButton.title = '编辑节点详情';
+    
+    // 添加编辑按钮点击事件
+    editButton.addEventListener('click', function() {
+        // 调用定义在HTML中的makeTableCellEditable函数
+        if (typeof window.makeTableCellEditable === 'function') {
+            const table = nodeDetailContent.querySelector('table');
+            window.makeTableCellEditable(table);
+            this.style.display = 'none'; // 隐藏编辑按钮
+            document.getElementById('nodeDetailActions').style.display = 'flex'; // 显示保存和取消按钮
+        } else {
+            console.error('makeTableCellEditable函数未定义');
+            if (typeof makeTableCellEditable === 'function') {
+                const table = nodeDetailContent.querySelector('table');
+                makeTableCellEditable(table);
+                this.style.display = 'none'; // 隐藏编辑按钮
+                document.getElementById('nodeDetailActions').style.display = 'flex'; // 显示保存和取消按钮
+            } else {
+                alert('编辑功能不可用');
+            }
+        }
+    });
+    
     // 添加详情标题
     const title = document.createElement('h3');
     title.textContent = '节点详情';
-    title.style.paddingRight = '30px'; // 为关闭按钮留出空间
+    title.style.paddingRight = '80px'; // 为按钮留出空间
     
     nodeDetailContent.appendChild(title);
     nodeDetailContent.appendChild(closeButton);
+    nodeDetailContent.appendChild(editButton);
     
     // 创建表格显示详情
     const table = document.createElement('table');
@@ -714,7 +767,7 @@ function showNodeDetails(details) {
     
     // 添加表名信息
     const tableNameRow = document.createElement('tr');
-    const tableNameLabelCell = document.createElement('td');
+    const tableNameLabelCell = document.createElement('th');
     tableNameLabelCell.textContent = '表名';
     const tableNameValueCell = document.createElement('td');
     tableNameValueCell.textContent = details.tableName;
@@ -743,7 +796,7 @@ function showNodeDetails(details) {
             
             const row = document.createElement('tr');
             
-            const labelCell = document.createElement('td');
+            const labelCell = document.createElement('th');
             labelCell.textContent = key;
             
             const valueCell = document.createElement('td');
@@ -777,6 +830,9 @@ function showNodeDetails(details) {
     nodeDetails.style.width = `${detailsWidth}px`;
     nodeDetails.style.maxHeight = `${containerRect.height - 70}px`; // 减少高度，避免超出容器
     nodeDetails.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)'; // 添加阴影效果提高可视性
+    
+    // 隐藏操作按钮
+    document.getElementById('nodeDetailActions').style.display = 'none';
 }
 
 /**
@@ -784,6 +840,23 @@ function showNodeDetails(details) {
  */
 function hideNodeDetails() {
     nodeDetails.style.display = 'none';
+    // 重置编辑状态
+    document.getElementById('nodeDetailActions').style.display = 'none';
+    editedFields = {};
+    currentEditingNodeId = null;
+    currentEditingTableName = null;
+    currentEditingTenantId = null;
+    currentEditingDbName = null;
+}
+
+/**
+ * 获取当前环境的数据库配置
+ * 
+ * @returns {Object} 数据库配置对象
+ */
+function getDbConfig() {
+    const environment = dbEnvironmentSelect.value;
+    return dbConfigs[environment] || { host: '', port: '', username: '', password: '' };
 }
 
 /**
@@ -848,9 +921,6 @@ async function loadDbConfigsFromServer() {
             daily: configs.daily || { host: '', port: '', username: '', password: '' },
             pre: configs.pre || { host: '', port: '', username: '', password: '' }
         };
-        
-        // 填充配置表单
-        populateConfigForm();
         
         // 移除加载消息
         document.body.removeChild(message);
@@ -1016,22 +1086,80 @@ function initializeCharts() {
                     
                     // 检查是否是分组节点
                     if (params.data.isGroup === true) {
-                        console.log('点击了分组节点:', params.data.name);
-                        
-                        // 这里可以处理分组节点的逻辑
-                        // 例如展开/折叠该组的子节点等
-                        
-                        // 暂时不显示详情面板，直接返回
+                        // 分组节点显示分组信息
+                        const groupInfo = {
+                            tableName: params.data.tableName.replace('_group', ''),
+                            data: {
+                                '节点类型': '分组节点',
+                                '节点数量': params.data.children ? params.data.children.length : 0,
+                                '节点名称': params.data.name
+                            }
+                        };
+                        showNodeDetails(groupInfo);
                         return;
                     }
                     
-                    // 显示节点详情
-                    showNodeDetails({
-                        tableName: params.data.tableName || params.name,
-                        data: params.data
+                    // 获取当前环境的数据库配置
+                    const environment = dbEnvironmentSelect.value;
+                    const dbName = dbNameInput.value.trim();
+                    const currentDbConfig = dbConfigs[environment];
+                    const ytenant_id = document.getElementById('ytenant_id').value.trim() || "0"; // 获取租户ID
+                    
+                    // 防止获取非表节点的详情
+                    if (!params.data.tableName || params.data.tableName.includes('_group')) {
+                        showNodeDetails({ 
+                            tableName: params.data.tableName || '未知表',
+                            data: { 
+                                id: params.data.id || '未知ID', 
+                                name: params.data.name || '未知名称',
+                                '节点类型': '导航节点'
+                            }
+                        });
+                        return;
+                    }
+                    
+                    console.log('获取表详情参数:', {
+                        environment,
+                        dbName,
+                        tableName: params.data.tableName,
+                        id: params.data.id,
+                        ytenant_id // 添加租户ID
                     });
+                    
+                    // 显示加载提示
+                    loadingIndicator.style.display = 'block';
+                    loadingIndicator.textContent = '正在加载节点详情...';
+                    
+                    // 尝试获取节点详细信息
+                    try {
+                        const requestData = {
+                            environment: environment,
+                            dbName: dbName,
+                            tableName: params.data.tableName,
+                            id: params.data.id,
+                            ytenant_id: ytenant_id,
+                            dbConfig: currentDbConfig
+                        };
+                        
+                        const details = await window.fetchTableDetails(requestData);
+                        
+                        // 隐藏加载提示
+                        loadingIndicator.style.display = 'none';
+                        
+                        showNodeDetails(details);
+                    } catch (error) {
+                        // 隐藏加载提示
+                        loadingIndicator.style.display = 'none';
+                        
+                        console.warn('无法获取详细信息，使用节点数据:', error);
+                        // 使用现有节点数据显示
+                        showNodeDetails({ 
+                            tableName: params.data.tableName,
+                            data: { id: params.data.id, name: params.data.name, '错误信息': error.message }
+                        });
+                    }
                 } catch (error) {
-                    console.error('处理节点点击事件时出错:', error);
+                    console.error('处理节点点击事件失败:', error);
                     alert('处理节点点击事件失败: ' + error.message);
                 }
             } else {

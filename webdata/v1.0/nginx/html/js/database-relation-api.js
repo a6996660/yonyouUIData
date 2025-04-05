@@ -6,6 +6,23 @@
 const API_BASE_URL = 'http://127.0.0.1:8090/api/v1';
 
 /**
+ * 获取API基础URL
+ * 
+ * @returns {string} API基础URL
+ */
+function getApiEndpoint() {
+    return API_BASE_URL;
+}
+
+// 导出API函数
+window.getApiEndpoint = getApiEndpoint;
+window.fetchDbRelationTree = fetchDbRelationTree;
+window.fetchTableDetails = fetchTableDetails;
+window.updateTableData = updateTableData;
+window.saveDbConfigsToServer = saveDbConfigsToServer;
+window.fetchDbConfigsFromServer = fetchDbConfigsFromServer;
+
+/**
  * 获取数据库表关联树形结构
  * 
  * @param {string} environment 环境（测试、日常、预发）
@@ -64,17 +81,66 @@ async function fetchDbRelationTree(environment, dbName, billNo, dbConfig, ytenan
 /**
  * 获取表节点详细信息
  * 
- * @param {string} environment 环境（测试、日常、预发）
- * @param {string} dbName 数据库名称
- * @param {string} tableName 表名
- * @param {string} id 节点ID
- * @param {Object} dbConfig 数据库配置
- * @param {string} ytenant_id 租户ID
+ * @param {Object|string} param1 环境（测试、日常、预发）或整个请求对象
+ * @param {string} [param2] 数据库名称
+ * @param {string} [param3] 表名
+ * @param {string} [param4] 节点ID
+ * @param {Object} [param5] 数据库配置
+ * @param {string} [param6] 租户ID
  * @returns {Promise} 返回表详情
  */
-async function fetchTableDetails(environment, dbName, tableName, id, dbConfig, ytenant_id) {
+async function fetchTableDetails(param1, param2, param3, param4, param5, param6) {
     try {
         const url = `${API_BASE_URL}/db-relation/table-details`;
+        
+        let environment, dbName, tableName, id, dbConfig, ytenant_id, requestData;
+        
+        // 检查第一个参数是否是对象，如果是则按对象方式处理
+        if (param1 && typeof param1 === 'object') {
+            // 对象参数方式
+            requestData = param1;
+            environment = requestData.environment;
+            dbName = requestData.dbName;
+            tableName = requestData.tableName;
+            id = requestData.id;
+            dbConfig = requestData.dbConfig;
+            ytenant_id = requestData.ytenant_id;
+            
+            console.log("获取表详情请求数据(对象方式):", {
+                environment,
+                dbName,
+                tableName,
+                id,
+                ytenant_id,
+                dbConfig: dbConfig ? { ...dbConfig, password: '******' } : null
+            });
+        } else {
+            // 独立参数方式
+            environment = param1;
+            dbName = param2;
+            tableName = param3;
+            id = param4;
+            dbConfig = param5;
+            ytenant_id = param6;
+            
+            requestData = {
+                environment: environment,
+                dbName: dbName,
+                tableName: tableName,
+                id: id,
+                ytenant_id: ytenant_id,
+                dbConfig: dbConfig
+            };
+            
+            console.log("获取表详情请求数据(参数方式):", {
+                environment,
+                dbName,
+                tableName,
+                id,
+                ytenant_id,
+                dbConfig: dbConfig ? { ...dbConfig, password: '******' } : null
+            });
+        }
         
         // 确保所有必要参数存在
         if (!dbName) {
@@ -88,24 +154,6 @@ async function fetchTableDetails(environment, dbName, tableName, id, dbConfig, y
         if (!id) {
             throw new Error('节点ID未指定');
         }
-        
-        const requestData = {
-            environment: environment,
-            dbName: dbName,
-            tableName: tableName,
-            id: id,
-            ytenant_id: ytenant_id,
-            dbConfig: dbConfig
-        };
-        
-        console.log("获取表详情请求数据:", {
-            environment,
-            dbName,
-            tableName,
-            id,
-            ytenant_id,
-            dbConfig: { ...dbConfig, password: '******' } // 隐藏密码
-        });
         
         const response = await fetch(url, {
             method: 'POST',
@@ -135,6 +183,70 @@ async function fetchTableDetails(environment, dbName, tableName, id, dbConfig, y
         return data.data;
     } catch (error) {
         console.error('获取表详情失败:', error);
+        throw error;
+    }
+}
+
+/**
+ * 更新表数据
+ * 
+ * @param {Object} requestData 请求数据，包含环境、数据库名称、表名、ID、租户ID、编辑字段和数据库配置
+ * @returns {Promise} 返回更新结果
+ */
+async function updateTableData(requestData) {
+    try {
+        const url = `${API_BASE_URL}/db-relation/table-update`;
+        
+        // 确保所有必要参数存在
+        if (!requestData.dbName) {
+            throw new Error('数据库名称未指定');
+        }
+        
+        if (!requestData.tableName) {
+            throw new Error('表名未指定');
+        }
+        
+        if (!requestData.id) {
+            throw new Error('节点ID未指定');
+        }
+        
+        if (!requestData.editedFields || Object.keys(requestData.editedFields).length === 0) {
+            throw new Error('没有需要更新的字段');
+        }
+        
+        console.log("更新表数据请求:", {
+            ...requestData,
+            dbConfig: requestData.dbConfig ? { ...requestData.dbConfig, password: '******' } : null // 隐藏密码
+        });
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        if (!response.ok) {
+            let errorData;
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                errorData = { message: '未知错误' };
+            }
+            console.error("API错误响应:", errorData);
+            throw new Error(`API请求失败: ${response.status} - ${JSON.stringify(errorData)}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.code !== 200) {
+            throw new Error(data.message || '更新表数据失败');
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('更新表数据失败:', error);
         throw error;
     }
 }

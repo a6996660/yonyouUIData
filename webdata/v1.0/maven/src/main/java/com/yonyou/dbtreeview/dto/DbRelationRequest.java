@@ -1,5 +1,7 @@
 package com.yonyou.dbtreeview.dto;
 
+import java.util.Map;
+
 /**
  * 数据库关联树请求DTO
  */
@@ -12,6 +14,7 @@ public class DbRelationRequest {
     private String id;        // 节点ID
     private String ytenant_id; // 租户ID
     private DbConfigDTO dbConfig;
+    private Map<String, Object> editedFields; // 存储已编辑的字段
     
     public DbRelationRequest() {
     }
@@ -82,6 +85,14 @@ public class DbRelationRequest {
         this.dbConfig = dbConfig;
     }
     
+    public Map<String, Object> getEditedFields() {
+        return editedFields;
+    }
+    
+    public void setEditedFields(Map<String, Object> editedFields) {
+        this.editedFields = editedFields;
+    }
+    
     @Override
     public String toString() {
         return "DbRelationRequest{" +
@@ -92,6 +103,7 @@ public class DbRelationRequest {
                 ", id='" + id + '\'' +
                 ", ytenant_id='" + ytenant_id + '\'' +
                 ", dbConfig=" + (dbConfig != null ? "[已设置]" : "null") +
+                ", editedFields=" + (editedFields != null ? editedFields.size() + "个字段" : "null") +
                 '}';
     }
 } 

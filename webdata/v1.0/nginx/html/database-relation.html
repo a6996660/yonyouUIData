@@ -381,6 +381,10 @@
         <!-- 节点详情展示 -->
         <div class="node-details" id="nodeDetails">
             <div id="nodeDetailContent"></div>
+            <div class="flex justify-end mt-4" id="nodeDetailActions" style="display: none;">
+                <button id="saveNodeDetailsButton" class="button bg-green-600 hover:bg-green-500 mr-2">保存修改</button>
+                <button id="cancelNodeEditButton" class="button bg-gray-600 hover:bg-gray-500">取消</button>
+            </div>
         </div>
         
         <!-- 数据库配置模态框 -->
@@ -465,5 +469,168 @@
     </div>
 
     <script src="js/database-relation.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 保存按钮事件
+            document.getElementById('saveNodeDetailsButton').addEventListener('click', saveNodeDetails);
+            
+            // 取消按钮事件
+            document.getElementById('cancelNodeEditButton').addEventListener('click', cancelNodeEdit);
+            
+            // 其他初始化代码...
+        });
+        
+        // 用于存储已编辑的字段
+        let editedFields = {};
+        // 存储当前正在编辑的节点ID和表名
+        let currentEditingNodeId = null;
+        let currentEditingTableName = null;
+        let currentEditingTenantId = null;
+        let currentEditingDbName = null;
+        
+        // 添加节点详情的编辑和保存功能
+        function makeTableCellEditable(table) {
+            // 清空已编辑字段
+            editedFields = {};
+            
+            const rows = table.querySelectorAll('tr');
+            rows.forEach(row => {
+                const th = row.querySelector('th');
+                const td = row.querySelector('td');
+                
+                if (th && td) {
+                    const fieldName = th.textContent.trim();
+                    // ID字段不可编辑
+                    if (fieldName.toLowerCase() === 'id') {
+                        return;
+                    }
+                    
+                    const originalValue = td.textContent.trim();
+                    
+                    // 创建输入框
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = originalValue;
+                    input.className = 'input-field w-full';
+                    input.dataset.originalValue = originalValue;
+                    input.dataset.fieldName = fieldName;
+                    
+                    // 监听输入变化
+                    input.addEventListener('input', function() {
+                        if (this.value !== this.dataset.originalValue) {
+                            editedFields[fieldName] = this.value;
+                        } else {
+                            delete editedFields[fieldName];
+                        }
+                        
+                        // 如果有编辑的字段，显示操作按钮
+                        document.getElementById('nodeDetailActions').style.display = 
+                            Object.keys(editedFields).length > 0 ? 'flex' : 'none';
+                    });
+                    
+                    // 清空单元格并添加输入框
+                    td.textContent = '';
+                    td.appendChild(input);
+                }
+            });
+        }
+        
+        // 保存节点详情的修改
+        async function saveNodeDetails() {
+            if (!currentEditingNodeId || !currentEditingTableName || Object.keys(editedFields).length === 0) {
+                alert('没有要保存的修改');
+                return;
+            }
+            
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            loadingIndicator.textContent = '正在保存数据...';
+            loadingIndicator.style.display = 'block';
+            
+            try {
+                // 准备请求数据
+                const requestData = {
+                    environment: document.getElementById('dbEnvironment').value,
+                    dbName: currentEditingDbName,
+                    tableName: currentEditingTableName,
+                    id: currentEditingNodeId,
+                    ytenant_id: currentEditingTenantId,
+                    dbConfig: getDbConfig(),
+                    editedFields: editedFields
+                };
+                
+                // 获取API路径
+                const apiEndpoint = getApiEndpoint();
+                const response = await fetch(`${apiEndpoint}/db-relation/table-update`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.code === 200) {
+                    alert('保存成功');
+                    
+                    // 重新获取节点详情以刷新数据
+                    const tableDetailsRequest = {
+                        environment: document.getElementById('dbEnvironment').value,
+                        dbName: currentEditingDbName,
+                        tableName: currentEditingTableName,
+                        id: currentEditingNodeId,
+                        ytenant_id: currentEditingTenantId,
+                        dbConfig: getDbConfig()
+                    };
+                    
+                    window.fetchTableDetails(tableDetailsRequest)
+                        .then(details => {
+                            showNodeDetails(details);
+                        })
+                        .catch(error => {
+                            console.error('获取节点详情失败:', error);
+                            alert(`获取节点详情失败: ${error.message}`);
+                        });
+                } else {
+                    alert(`保存失败: ${result.message}`);
+                }
+            } catch (error) {
+                console.error('保存节点详情时出错:', error);
+                alert(`保存出错: ${error.message}`);
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        }
+        
+        // 取消编辑，恢复为查看模式
+        function cancelNodeEdit() {
+            // 重新获取节点详情以取消编辑
+            if (currentEditingNodeId && currentEditingTableName) {
+                const tableDetailsRequest = {
+                    environment: document.getElementById('dbEnvironment').value,
+                    dbName: currentEditingDbName,
+                    tableName: currentEditingTableName,
+                    id: currentEditingNodeId,
+                    ytenant_id: currentEditingTenantId,
+                    dbConfig: getDbConfig()
+                };
+                
+                window.fetchTableDetails(tableDetailsRequest)
+                    .then(details => {
+                        showNodeDetails(details);
+                    })
+                    .catch(error => {
+                        console.error('获取节点详情失败:', error);
+                        alert(`获取节点详情失败: ${error.message}`);
+                    });
+            }
+        }
+        
+        // 导出函数到全局作用域，使其可以在其他脚本中使用
+        window.makeTableCellEditable = makeTableCellEditable;
+        window.saveNodeDetails = saveNodeDetails;
+        window.cancelNodeEdit = cancelNodeEdit;
+        window.editedFields = editedFields;
+    </script>
 </body>
 </html> 

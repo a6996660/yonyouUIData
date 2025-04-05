@@ -108,4 +108,67 @@ public class DbRelationController {
             return ApiResponse.error("获取表详情失败: " + e.getMessage());
         }
     }
+
+    /**
+     * 更新表数据
+     * 
+     * @param request 包含环境、数据库名称、表名、ID、租户ID、编辑字段和数据库配置的请求
+     * @return 更新结果
+     */
+    @PostMapping("/table-update")
+    public ApiResponse<?> updateTableData(@RequestBody DbRelationRequest request) {
+        logger.info("接收到更新表数据请求: 环境={}, 数据库名={}, 表名={}, ID={}, 租户ID={}", 
+                request.getEnvironment(), request.getDbName(), request.getTableName(), 
+                request.getId(), request.getYtenant_id());
+        
+        try {
+            // 参数验证
+            if (request.getDbName() == null || request.getDbName().isEmpty()) {
+                return ApiResponse.error("数据库名称未指定");
+            }
+            
+            if (request.getTableName() == null || request.getTableName().isEmpty()) {
+                return ApiResponse.error("表名未指定");
+            }
+            
+            if (request.getId() == null || request.getId().isEmpty()) {
+                return ApiResponse.error("ID未指定");
+            }
+            
+            if (request.getEditedFields() == null || request.getEditedFields().isEmpty()) {
+                return ApiResponse.error("没有需要更新的字段");
+            }
+            
+            if (request.getDbConfig() == null) {
+                return ApiResponse.error("数据库配置未指定");
+            }
+            
+            // 创建DTO对象
+            DbConfigDTO dbConfigDTO = new DbConfigDTO();
+            dbConfigDTO.setHost(request.getDbConfig().getHost());
+            dbConfigDTO.setPort(request.getDbConfig().getPort());
+            dbConfigDTO.setUsername(request.getDbConfig().getUsername());
+            dbConfigDTO.setPassword(request.getDbConfig().getPassword());
+            
+            // 调用服务更新数据
+            boolean success = dbRelationService.updateTableData(
+                request.getEnvironment(),
+                request.getDbName(),
+                request.getTableName(),
+                request.getId(),
+                request.getYtenant_id(),
+                request.getEditedFields(),
+                dbConfigDTO
+            );
+            
+            if (success) {
+                return ApiResponse.success("数据更新成功");
+            } else {
+                return ApiResponse.error("数据更新失败");
+            }
+        } catch (Exception e) {
+            logger.error("更新表数据失败", e);
+            return ApiResponse.error("更新表数据失败: " + e.getMessage());
+        }
+    }
 } 

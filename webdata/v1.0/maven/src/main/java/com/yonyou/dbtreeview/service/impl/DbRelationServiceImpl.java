@@ -72,6 +72,78 @@ public class DbRelationServiceImpl implements DbRelationService {
         }
     }
     
+    @Override
+    public boolean updateTableData(String environment, String dbName, String tableName, String id, String ytenant_id, Map<String, Object> editedFields, DbConfigDTO dbConfig) {
+        Connection conn = null;
+        
+        try {
+            // 验证参数
+            if (tableName == null || tableName.trim().isEmpty()) {
+                logger.error("更新表数据失败：表名为空");
+                return false;
+            }
+            
+            if (id == null || id.trim().isEmpty()) {
+                logger.error("更新表数据失败：ID为空");
+                return false;
+            }
+            
+            if (editedFields == null || editedFields.isEmpty()) {
+                logger.error("更新表数据失败：没有需要更新的字段");
+                return false;
+            }
+            
+            // 连接数据库
+            conn = getConnection(dbName, dbConfig);
+            
+            // 构建SQL更新语句
+            StringBuilder sqlBuilder = new StringBuilder();
+            sqlBuilder.append("UPDATE ").append(tableName).append(" SET ");
+            
+            // 添加要更新的字段
+            int fieldCount = 0;
+            for (String fieldName : editedFields.keySet()) {
+                if (fieldCount > 0) {
+                    sqlBuilder.append(", ");
+                }
+                
+                // 防止SQL注入，使用占位符
+                sqlBuilder.append(fieldName).append(" = ?");
+                fieldCount++;
+            }
+            
+            // 添加WHERE条件
+            sqlBuilder.append(" WHERE id = ? AND ytenant_id = ?");
+            
+            // 日志记录SQL语句（不包含具体值以保护敏感数据）
+            logger.info("执行更新SQL: {}", sqlBuilder.toString());
+            
+            try (PreparedStatement stmt = conn.prepareStatement(sqlBuilder.toString())) {
+                // 设置参数值
+                int paramIndex = 1;
+                for (String fieldName : editedFields.keySet()) {
+                    Object value = editedFields.get(fieldName);
+                    stmt.setObject(paramIndex++, value);
+                }
+                
+                // 设置WHERE条件参数
+                stmt.setString(paramIndex++, id);
+                stmt.setString(paramIndex, ytenant_id);
+                
+                // 执行更新
+                int rowsAffected = stmt.executeUpdate();
+                logger.info("更新表 {} 数据成功，影响 {} 行", tableName, rowsAffected);
+                
+                return rowsAffected > 0;
+            }
+        } catch (Exception e) {
+            logger.error("更新表数据失败", e);
+            return false;
+        } finally {
+            closeConnection(conn);
+        }
+    }
+    
     /**
      * 获取数据库连接
      */
