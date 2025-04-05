@@ -125,6 +125,26 @@ function initEventListeners() {
             myChart.resize();
         }
     });
+    
+    // 树形图布局控制
+    const applyLayoutButton = document.getElementById('apply-layout');
+    if (applyLayoutButton) {
+        applyLayoutButton.addEventListener('click', function() {
+            applyCustomLayout();
+        });
+    }
+    
+    // 监听展开所有节点选项
+    const expandAllNodes = document.getElementById('expand-all-nodes');
+    if (expandAllNodes) {
+        expandAllNodes.addEventListener('change', function() {
+            if (myChart) {
+                const option = myChart.getOption();
+                option.series[0].initialTreeDepth = this.checked ? -1 : 2;
+                myChart.setOption(option);
+            }
+        });
+    }
 }
 
 /**
@@ -254,6 +274,12 @@ function renderGraph(data) {
         // 动态设置容器高度
         graphContainer.style.height = containerHeight;
         
+        // 确定是否应该启用自动分组功能
+        const shouldEnableAutoGrouping = treeMetrics.nodeCount > 50 || treeMetrics.maxChildren > 12;
+        
+        // 预处理数据 - 对大量相同类型的子节点进行分组
+        const processedData = shouldEnableAutoGrouping ? processTreeGrouping(data, true) : data;
+        
         // 设置图表配置
         const option = {
             backgroundColor: '#303134',
@@ -303,7 +329,7 @@ function renderGraph(data) {
             series: [
                 {
                     type: 'tree',
-                    data: [data],
+                    data: [processedData],
                     top: '8%',
                     bottom: '8%',
                     left: '5%',
@@ -317,7 +343,7 @@ function renderGraph(data) {
                     roam: true, // 允许缩放和平移
                     scaleLimit: {
                         min: 0.3,
-                        max: 2
+                        max: 5 // 允许更大的缩放比例
                     },
                     emphasis: {
                         focus: 'descendant'
@@ -352,14 +378,21 @@ function renderGraph(data) {
                     lineStyle: {
                         color: '#5f6368',
                         width: 1,
-                        curveness: 0.5
+                        curveness: treeMetrics.nodeCount > 100 ? 0.3 : 0.5 // 节点多时降低曲率
                     },
                     itemStyle: {
                         borderWidth: 1
                     },
                     // 使用基于树结构分析的布局参数
                     nodeGap: treeMetrics.recommendedNodeGap,
-                    layerPadding: treeMetrics.recommendedLayerPadding
+                    layerPadding: treeMetrics.recommendedLayerPadding,
+                    // 大量节点时启用力导向布局辅助
+                    force: {
+                        repulsion: treeMetrics.nodeCount > 150 ? 50 : 0,
+                        layoutAnimation: treeMetrics.nodeCount <= 200 // 节点太多时禁用布局动画
+                    },
+                    // 大量节点时默认不显示全部节点
+                    initialTreeDepth: treeMetrics.nodeCount > 150 ? 2 : -1
                 }
             ]
         };
@@ -916,8 +949,12 @@ function processTreeGrouping(data, enableGrouping = false) {
             }
         });
         
-        // 标记需要分组的类型（数量超过4个的类型）
-        const typeToGroup = Object.keys(typeCounts).filter(type => typeCounts[type] > 4);
+        // 智能判断是否需要分组 - 数量超过阈值或占比超过60%的类型将被分组
+        const totalChildren = node.children.length;
+        const typeToGroup = Object.keys(typeCounts).filter(type => {
+            const count = typeCounts[type];
+            return count > 3 || (count >= 3 && count / totalChildren > 0.6);
+        });
         
         // 如果没有需要分组的类型
         if (typeToGroup.length === 0) {
@@ -941,15 +978,20 @@ function processTreeGrouping(data, enableGrouping = false) {
                     // 基于表名生成唯一颜色
                     const color = getGroupColor(child.tableName);
                     
+                    // 对于大组，添加可展开/折叠功能
+                    const isLargeGroup = typeCounts[child.tableName] > 10;
+                    
                     groups[child.tableName] = {
                         name: `${child.tableName} (${typeCounts[child.tableName]}个)`,
                         tableName: `${child.tableName}_group`,
                         id: `group_${child.tableName}_${Date.now()}`, // 确保ID唯一
                         isGroup: true, // 标记为分组节点
+                        collapsed: isLargeGroup, // 大组默认折叠
                         children: [],
                         itemStyle: {
                             color: color,  // 自定义颜色
-                            borderColor: getBorderColor(color)
+                            borderColor: getBorderColor(color),
+                            borderWidth: 2
                         },
                         label: {
                             show: true,
@@ -994,7 +1036,11 @@ function processTreeGrouping(data, enableGrouping = false) {
             'billtplgroup_base': '#4169E1', // 皇家蓝色
             'billitem_base': '#00CED1',   // 暗青色
             'bill_toolbar': '#20B2AA',    // 浅海绿
-            'pb_meta_filters': '#8FBC8F'  // 暗海绿色
+            'pb_meta_filters': '#8FBC8F',  // 暗海绿色
+            'meta_component': '#FF7F50',   // 珊瑚色
+            'meta_elements': '#FF8C00',    // 深橙色
+            'billtpl_comp': '#9370DB',     // 中紫色
+            'metadata': '#3CB371'          // 中海蓝绿色
         };
         
         // 使用表名对应的颜色或默认颜色
@@ -1036,6 +1082,8 @@ function calculateTreeMetrics(treeData) {
     let maxDepth = 0;
     let maxChildren = 0;
     let leafCount = 0;
+    let widestLevelNodes = 0;
+    let levelNodeCounts = {}; // 记录每一层的节点数量
     
     // 递归分析树结构
     function analyzeNode(node, depth = 0) {
@@ -1043,6 +1091,10 @@ function calculateTreeMetrics(treeData) {
         
         nodeCount++;
         maxDepth = Math.max(maxDepth, depth);
+        
+        // 更新每层节点统计
+        levelNodeCounts[depth] = (levelNodeCounts[depth] || 0) + 1;
+        widestLevelNodes = Math.max(widestLevelNodes, levelNodeCounts[depth]);
         
         // 计算子节点
         if (node.children && node.children.length > 0) {
@@ -1070,33 +1122,76 @@ function calculateTreeMetrics(treeData) {
     
     // 根据节点数量和深度调整
     if (nodeCount > 200) {
-        recommendedNodeGap = 50; // 节点很多时，间距适当缩小
+        recommendedNodeGap = 30; // 节点很多时，间距适当缩小
     } else if (nodeCount > 100) {
-        recommendedNodeGap = 55;
+        recommendedNodeGap = 40;
     }
     
+    // 根据树的宽度动态调整层级间距
     if (maxDepth > 5) {
-        recommendedLayerPadding = 200; // 树很深时，层级间距增加
+        // 树很深时，增加层级间距，但考虑总宽度
+        recommendedLayerPadding = Math.min(220, Math.max(180, 360 / maxDepth));
     }
     
-    // 如果有大量叶子节点，增加节点间距
+    // 根据每层最多节点数调整节点间距
+    if (widestLevelNodes > 20) {
+        recommendedNodeGap = Math.max(20, Math.min(40, 800 / widestLevelNodes));
+    }
+    
+    // 叶子节点过多时，调整策略
     if (leafCount > 100) {
-        recommendedNodeGap = Math.max(recommendedNodeGap, 70);
+        recommendedNodeGap = Math.min(recommendedNodeGap, 35);
     }
     
-    // 针对大量子节点的情况，增加节点间距
-    if (maxChildren > 15) {
-        recommendedNodeGap = Math.max(recommendedNodeGap, 75);
-    }
-    
-    console.log(`树分析: ${nodeCount}个节点, 最大深度: ${maxDepth}, 最大子节点数: ${maxChildren}, 叶子节点: ${leafCount}`);
+    console.log(`树分析: ${nodeCount}个节点, 最大深度: ${maxDepth}, 最大子节点数: ${maxChildren}, 叶子节点: ${leafCount}, 最宽层节点数: ${widestLevelNodes}`);
+    console.log(`推荐布局参数: 节点间距=${recommendedNodeGap}, 层级间距=${recommendedLayerPadding}`);
     
     return {
         nodeCount,
         maxDepth,
         maxChildren,
         leafCount,
+        widestLevelNodes,
         recommendedNodeGap,
         recommendedLayerPadding
     };
+}
+
+/**
+ * 应用自定义的树形图布局
+ */
+function applyCustomLayout() {
+    if (!myChart || !window.originalTreeData) return;
+    
+    // 获取控制选项的值
+    const enableGrouping = document.getElementById('enable-auto-grouping').checked;
+    const nodeSpacing = parseInt(document.getElementById('node-spacing').value);
+    const layerSpacing = parseInt(document.getElementById('layer-spacing').value);
+    const expandAll = document.getElementById('expand-all-nodes').checked;
+    
+    try {
+        // 重新处理数据
+        const processedData = enableGrouping 
+            ? processTreeGrouping(window.originalTreeData, true) 
+            : window.originalTreeData;
+        
+        // 更新配置
+        const option = myChart.getOption();
+        option.series[0].data = [processedData];
+        option.series[0].nodeGap = nodeSpacing;
+        option.series[0].layerPadding = layerSpacing;
+        option.series[0].initialTreeDepth = expandAll ? -1 : 2;
+        
+        // 应用更新
+        myChart.setOption(option);
+        
+        console.log('自定义布局已应用', {
+            enableGrouping,
+            nodeSpacing,
+            layerSpacing,
+            expandAll
+        });
+    } catch (error) {
+        console.error('应用自定义布局失败:', error);
+    }
 }

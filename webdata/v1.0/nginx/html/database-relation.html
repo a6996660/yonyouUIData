@@ -291,6 +291,32 @@
                 <p style="margin: 0 0 2px 0;">· 按住左键拖动：平移图表</p>
                 <p style="margin: 0 0 0 0;">· 点击节点：显示详情</p>
             </div>
+            
+            <!-- 树形图显示控制 -->
+            <div id="tree-controls" style="position: absolute; top: 70px; right: 20px; background-color: rgba(0,0,0,0.6); padding: 8px 12px; border-radius: 4px; color: #fff; font-size: 12px; z-index: 100;">
+                <div style="margin-bottom: 8px;"><b>显示控制：</b></div>
+                <div style="margin-bottom: 4px;">
+                    <label>
+                        <input type="checkbox" id="enable-auto-grouping" checked> 自动分组节点
+                    </label>
+                </div>
+                <div style="margin-bottom: 4px;">
+                    <label>
+                        <input type="checkbox" id="expand-all-nodes"> 展开所有节点
+                    </label>
+                </div>
+                <div style="margin-bottom: 4px;">
+                    <label for="node-spacing">节点间距:</label>
+                    <input type="range" id="node-spacing" min="20" max="100" value="60" style="width: 100px;">
+                </div>
+                <div>
+                    <label for="layer-spacing">层级间距:</label>
+                    <input type="range" id="layer-spacing" min="120" max="300" value="180" style="width: 100px;">
+                </div>
+                <div style="margin-top: 8px;">
+                    <button id="apply-layout" class="button bg-blue-600 hover:bg-blue-500" style="font-size: 11px; padding: 2px 6px; height: auto;">应用布局</button>
+                </div>
+            </div>
         </div>
         
         <!-- 节点详情展示 -->
