@@ -872,8 +872,8 @@
                 
                 if (th && td) {
                     const fieldName = th.textContent.trim();
-                    // ID字段和表名不可编辑
-                    if (fieldName.toLowerCase() === 'id' || fieldName.toLowerCase() === '表名') {
+                    // ID字段、表名和pubts不可编辑
+                    if (fieldName.toLowerCase() === 'id' || fieldName.toLowerCase() === '表名' || fieldName.toLowerCase() === 'pubts') {
                         return;
                     }
                     
@@ -1132,14 +1132,6 @@
             // 调用原始函数
             if (typeof originalShowNodeDetails === 'function') {
                 originalShowNodeDetails(details);
-            }
-            
-            // 更新节点详情标题
-            const nodeDetailTitle = document.getElementById('nodeDetailTitle');
-            if (nodeDetailTitle && details && details.tableName) {
-                nodeDetailTitle.textContent = `表 ${details.tableName} 详情`;
-            } else {
-                nodeDetailTitle.textContent = '节点详情';
             }
             
             // 重置编辑按钮

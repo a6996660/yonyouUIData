@@ -679,7 +679,7 @@ function showNodeDetails(details) {
     const closeButton = document.createElement('button');
     closeButton.textContent = '×';
     closeButton.style.position = 'absolute';
-    closeButton.style.right = '10px';
+    closeButton.style.left = '10px';
     closeButton.style.top = '10px';
     closeButton.style.border = 'none';
     closeButton.style.background = 'none';
@@ -708,30 +708,16 @@ function showNodeDetails(details) {
     titleContainer.style.display = 'flex';
     titleContainer.style.alignItems = 'center';
     titleContainer.style.marginBottom = '16px';
-    titleContainer.style.paddingRight = '80px'; // 为按钮留出空间
+    titleContainer.style.paddingLeft = '40px'; // 为左侧关闭按钮留出空间
     
     const title = document.createElement('h3');
-    title.textContent = '节点详情';
+    // 使用具体节点名称作为标题，优先使用name或cName字段
+    const nodeName = details.data.name || details.data.cName || details.data.cBillNo || details.data.cCode || details.tableName;
+    title.textContent = nodeName;
     title.style.margin = '0';
     title.style.flex = '1';
     
-    // 添加表名标签
-    const tableNameBadge = document.createElement('span');
-    tableNameBadge.textContent = details.tableName;
-    tableNameBadge.style.backgroundColor = 'rgba(138, 180, 248, 0.2)';
-    tableNameBadge.style.color = '#8ab4f8';
-    tableNameBadge.style.padding = '3px 8px';
-    tableNameBadge.style.borderRadius = '4px';
-    tableNameBadge.style.fontSize = '12px';
-    tableNameBadge.style.fontWeight = '500';
-    tableNameBadge.style.marginLeft = '8px';
-    tableNameBadge.style.whiteSpace = 'nowrap';
-    tableNameBadge.style.overflow = 'hidden';
-    tableNameBadge.style.textOverflow = 'ellipsis';
-    tableNameBadge.style.maxWidth = '150px';
-    
     titleContainer.appendChild(title);
-    titleContainer.appendChild(tableNameBadge);
     
     nodeDetailContent.appendChild(titleContainer);
     nodeDetailContent.appendChild(closeButton);
