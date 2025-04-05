@@ -405,8 +405,8 @@ function renderGraph(data) {
                         repulsion: treeMetrics.nodeCount > 150 ? 80 : 40, // 增加节点间斥力
                         layoutAnimation: treeMetrics.nodeCount <= 250 // 节点太多时禁用布局动画
                     },
-                    // 大量节点时默认不显示全部节点
-                    initialTreeDepth: treeMetrics.nodeCount > 150 ? 2 : -1
+                    // 始终展示到所有末级节点
+                    initialTreeDepth: -1
                 }
             ]
         };
