@@ -163,41 +163,133 @@
             max-width: 800px;
             margin-left: auto;
             margin-right: auto;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+            border: 1px solid #414247;
         }
         .node-details h3 {
             margin-top: 0;
             color: #8ab4f8;
+            font-size: 18px;
+            font-weight: 500;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #414247;
+            margin-bottom: 12px;
         }
         /* 添加节点详情表格样式，确保单词不换行 */
         .node-details table {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid #414247;
         }
         .node-details th, .node-details td {
-            border: 1px solid #5f6368;
-            padding: 8px 12px;
+            border: 1px solid #414247;
+            padding: 10px 12px;
             text-align: left;
+            font-size: 13px;
+        }
+        .node-details th {
+            background-color: #3c4043;
+            width: 40%;
+            color: #e8eaed;
+            font-weight: 500;
             word-break: keep-all;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .node-details th {
-            background-color: #3c4043;
-            width: 30%;
-        }
         .node-details td {
-            width: 70%;
+            width: 60%;
+            color: #d2d3d7;
+            word-break: break-word;
+            white-space: pre-wrap;
+            line-height: 1.4;
         }
         .node-details tr:nth-child(even) {
             background-color: #35363a;
         }
+        .node-details tr:nth-child(odd) {
+            background-color: #303134;
+        }
+        .node-details tr:hover {
+            background-color: #3c3f43;
+        }
         /* 添加详情内容容器样式 */
         #nodeDetailContent {
-            overflow-x: auto;
-            max-height: 500px;
+            overflow-x: hidden;
+            max-height: calc(80vh - 100px);
             overflow-y: auto;
+            padding-right: 6px;
+            scrollbar-width: thin;
+            scrollbar-color: #5f6368 #303134;
+        }
+        #nodeDetailContent::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        #nodeDetailContent::-webkit-scrollbar-track {
+            background: #303134;
+            border-radius: 4px;
+        }
+        #nodeDetailContent::-webkit-scrollbar-thumb {
+            background-color: #5f6368;
+            border-radius: 4px;
+            border: 2px solid #303134;
+        }
+        #nodeDetailContent::-webkit-scrollbar-thumb:hover {
+            background-color: #7b7e82;
+        }
+        /* 编辑字段输入框样式 */
+        .node-details td .input-field {
+            background-color: #3c4043;
+            color: #fff;
+            border: 1px solid #5f6368;
+            padding: 6px 10px;
+            width: 100%;
+            height: 28px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .node-details td .input-field:focus {
+            border-color: #8ab4f8;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(138, 180, 248, 0.15);
+        }
+        /* 保存取消按钮样式优化 */
+        #nodeDetailActions {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #414247;
+        }
+        #saveNodeDetailsButton {
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #saveNodeDetailsButton:hover {
+            background-color: #1765cc;
+        }
+        #cancelNodeEditButton {
+            background-color: #3c4043;
+            color: #e8eaed;
+            border: 1px solid #5f6368;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #cancelNodeEditButton:hover {
+            background-color: #4a4d51;
         }
         .config-modal {
             display: none;
@@ -275,6 +367,60 @@
         }
         table.data-table tr:nth-child(even) {
             background-color: #35363a;
+        }
+        @media (max-width: 1280px) {
+            .node-details {
+                max-width: 320px;
+            }
+            #nodeDetailContent th, #nodeDetailContent td {
+                padding: 8px 10px;
+                font-size: 12px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .node-details {
+                position: fixed !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                top: auto !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                max-height: 70vh !important;
+                border-radius: 8px 8px 0 0;
+                margin: 0;
+                z-index: 1000 !important;
+            }
+            #nodeDetailContent {
+                max-height: calc(70vh - 120px) !important;
+            }
+            .search-container {
+                bottom: calc(70vh + 10px) !important;
+            }
+        }
+        
+        /* 添加卡片进入和退出的动画效果 */
+        @keyframes slide-in {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .node-details {
+            animation: slide-in 0.3s ease-out;
+        }
+        
+        .config-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
         }
     </style>
 </head>
@@ -382,8 +528,8 @@
         <div class="node-details" id="nodeDetails">
             <div id="nodeDetailContent"></div>
             <div class="flex justify-end mt-4" id="nodeDetailActions" style="display: none;">
-                <button id="saveNodeDetailsButton" class="button bg-green-600 hover:bg-green-500 mr-2">保存修改</button>
-                <button id="cancelNodeEditButton" class="button bg-gray-600 hover:bg-gray-500">取消</button>
+                <button id="saveNodeDetailsButton" class="button mr-2">保存修改</button>
+                <button id="cancelNodeEditButton" class="button">取消</button>
             </div>
         </div>
         
@@ -500,8 +646,8 @@
                 
                 if (th && td) {
                     const fieldName = th.textContent.trim();
-                    // ID字段不可编辑
-                    if (fieldName.toLowerCase() === 'id') {
+                    // ID字段和表名不可编辑
+                    if (fieldName.toLowerCase() === 'id' || fieldName.toLowerCase() === '表名') {
                         return;
                     }
                     

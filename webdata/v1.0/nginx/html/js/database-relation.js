@@ -711,9 +711,21 @@ function showNodeDetails(details) {
     editButton.style.right = '40px';
     editButton.style.top = '10px';
     editButton.style.fontSize = '12px';
-    editButton.style.padding = '2px 10px';
+    editButton.style.padding = '4px 12px';
     editButton.style.cursor = 'pointer';
+    editButton.style.borderRadius = '4px';
+    editButton.style.border = 'none';
+    editButton.style.backgroundColor = '#1a73e8';
+    editButton.style.color = 'white';
     editButton.title = '编辑节点详情';
+    
+    // 添加编辑按钮悬停效果
+    editButton.addEventListener('mouseover', function() {
+        this.style.backgroundColor = '#1765cc';
+    });
+    editButton.addEventListener('mouseout', function() {
+        this.style.backgroundColor = '#1a73e8';
+    });
     
     // 添加编辑按钮点击事件
     editButton.addEventListener('click', function() {
@@ -736,12 +748,37 @@ function showNodeDetails(details) {
         }
     });
     
-    // 添加详情标题
+    // 添加详情标题和节点信息
+    const titleContainer = document.createElement('div');
+    titleContainer.style.display = 'flex';
+    titleContainer.style.alignItems = 'center';
+    titleContainer.style.marginBottom = '16px';
+    titleContainer.style.paddingRight = '80px'; // 为按钮留出空间
+    
     const title = document.createElement('h3');
     title.textContent = '节点详情';
-    title.style.paddingRight = '80px'; // 为按钮留出空间
+    title.style.margin = '0';
+    title.style.flex = '1';
     
-    nodeDetailContent.appendChild(title);
+    // 添加表名标签
+    const tableNameBadge = document.createElement('span');
+    tableNameBadge.textContent = details.tableName;
+    tableNameBadge.style.backgroundColor = 'rgba(138, 180, 248, 0.2)';
+    tableNameBadge.style.color = '#8ab4f8';
+    tableNameBadge.style.padding = '3px 8px';
+    tableNameBadge.style.borderRadius = '4px';
+    tableNameBadge.style.fontSize = '12px';
+    tableNameBadge.style.fontWeight = '500';
+    tableNameBadge.style.marginLeft = '8px';
+    tableNameBadge.style.whiteSpace = 'nowrap';
+    tableNameBadge.style.overflow = 'hidden';
+    tableNameBadge.style.textOverflow = 'ellipsis';
+    tableNameBadge.style.maxWidth = '150px';
+    
+    titleContainer.appendChild(title);
+    titleContainer.appendChild(tableNameBadge);
+    
+    nodeDetailContent.appendChild(titleContainer);
     nodeDetailContent.appendChild(closeButton);
     nodeDetailContent.appendChild(editButton);
     
@@ -764,16 +801,6 @@ function showNodeDetails(details) {
     
     // 表体
     const tbody = document.createElement('tbody');
-    
-    // 添加表名信息
-    const tableNameRow = document.createElement('tr');
-    const tableNameLabelCell = document.createElement('th');
-    tableNameLabelCell.textContent = '表名';
-    const tableNameValueCell = document.createElement('td');
-    tableNameValueCell.textContent = details.tableName;
-    tableNameRow.appendChild(tableNameLabelCell);
-    tableNameRow.appendChild(tableNameValueCell);
-    tbody.appendChild(tableNameRow);
     
     // 添加所有字段信息
     if (details.data) {
@@ -820,7 +847,7 @@ function showNodeDetails(details) {
     
     // 计算位置 - 将详情面板显示在右侧
     const containerRect = graphContainer.getBoundingClientRect();
-    const detailsWidth = 320; // 详情面板宽度增加以适应更多内容
+    const detailsWidth = 350; // 详情面板宽度增加以适应更多内容
     
     // 设置位置 - 距离右侧10px
     nodeDetails.style.position = 'absolute';
@@ -828,8 +855,8 @@ function showNodeDetails(details) {
     nodeDetails.style.top = '60px'; // 设置顶部位置，避免遮挡工具栏
     nodeDetails.style.zIndex = '100';
     nodeDetails.style.width = `${detailsWidth}px`;
-    nodeDetails.style.maxHeight = `${containerRect.height - 70}px`; // 减少高度，避免超出容器
-    nodeDetails.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)'; // 添加阴影效果提高可视性
+    nodeDetails.style.maxHeight = `calc(90vh - 70px)`; // 减少高度，避免超出容器
+    nodeDetails.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.3)'; // 添加阴影效果提高可视性
     
     // 隐藏操作按钮
     document.getElementById('nodeDetailActions').style.display = 'none';
