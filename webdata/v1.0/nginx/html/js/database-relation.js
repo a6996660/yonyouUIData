@@ -455,6 +455,10 @@ function renderGraph(data) {
         // 绑定图表点击事件
         myChart.on('click', async function(params) {
             console.log('图表节点点击:', params.data);
+            
+            // 隐藏缩放提示
+            hideZoomHint();
+            
             if (params.data) {
                 try {
                     currentNodeData = params.data;
@@ -524,6 +528,17 @@ function renderGraph(data) {
                     console.error('处理节点点击事件失败:', error);
                     alert('处理节点点击事件失败: ' + error.message);
                 }
+            } else {
+                // 点击了图表空白区域，隐藏详情面板
+                hideNodeDetails();
+            }
+        });
+        
+        // 绑定图表背景点击事件，关闭节点详情
+        myChart.getZr().on('click', function(event) {
+            // 如果点击的是空白处（没有触发图表节点点击事件）
+            if (!event.target) {
+                hideNodeDetails();
             }
         });
         
@@ -641,9 +656,44 @@ function showNodeDetails(details) {
         return;
     }
     
+    // 创建关闭按钮
+    const closeButton = document.createElement('button');
+    closeButton.textContent = '×';
+    closeButton.style.position = 'absolute';
+    closeButton.style.right = '10px';
+    closeButton.style.top = '10px';
+    closeButton.style.border = 'none';
+    closeButton.style.background = 'none';
+    closeButton.style.color = '#e8eaed';
+    closeButton.style.fontSize = '20px';
+    closeButton.style.cursor = 'pointer';
+    closeButton.style.padding = '2px 8px';
+    closeButton.style.borderRadius = '4px';
+    closeButton.title = '关闭详情';
+    
+    // 添加悬停效果
+    closeButton.addEventListener('mouseover', function() {
+        this.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+    });
+    closeButton.addEventListener('mouseout', function() {
+        this.style.backgroundColor = 'transparent';
+    });
+    
+    // 添加点击事件
+    closeButton.addEventListener('click', function() {
+        hideNodeDetails();
+    });
+    
+    // 添加详情标题
+    const title = document.createElement('h3');
+    title.textContent = '节点详情';
+    title.style.paddingRight = '30px'; // 为关闭按钮留出空间
+    
+    nodeDetailContent.appendChild(title);
+    nodeDetailContent.appendChild(closeButton);
+    
     // 创建表格显示详情
     const table = document.createElement('table');
-    table.className = 'data-table';
     
     // 表头
     const thead = document.createElement('thead');
@@ -675,7 +725,7 @@ function showNodeDetails(details) {
     // 添加所有字段信息
     if (details.data) {
         // 按字段名排序，把重要字段排在前面
-        const priorityFields = ['id', 'name', 'cName', '节点类型', '节点数量'];
+        const priorityFields = ['id', 'name', 'cName', 'cBillNo', 'cCode', '节点类型', '节点数量'];
         const fieldEntries = Object.entries(details.data);
         
         // 按优先级排序
@@ -689,7 +739,7 @@ function showNodeDetails(details) {
         });
         
         fieldEntries.forEach(([key, value]) => {
-            if (key === 'tableName') return; // 已经显示过表名，跳过
+            if (key === 'tableName' || key === 'children') return; // 跳过这些字段
             
             const row = document.createElement('tr');
             
@@ -699,13 +749,9 @@ function showNodeDetails(details) {
             const valueCell = document.createElement('td');
             const displayValue = value !== null && value !== undefined ? String(value) : '';
             
-            // 如果值太长，截断显示
-            if (displayValue.length > 50) {
-                valueCell.textContent = displayValue.substring(0, 47) + '...';
-                valueCell.title = displayValue; // 鼠标悬停时显示完整值
-            } else {
-                valueCell.textContent = displayValue;
-            }
+            // 设置值并添加完整内容作为提示
+            valueCell.textContent = displayValue;
+            valueCell.title = displayValue; // 鼠标悬停时显示完整值
             
             row.appendChild(labelCell);
             row.appendChild(valueCell);
@@ -721,7 +767,7 @@ function showNodeDetails(details) {
     
     // 计算位置 - 将详情面板显示在右侧
     const containerRect = graphContainer.getBoundingClientRect();
-    const detailsWidth = 280; // 详情面板宽度
+    const detailsWidth = 320; // 详情面板宽度增加以适应更多内容
     
     // 设置位置 - 距离右侧10px
     nodeDetails.style.position = 'absolute';
@@ -730,7 +776,14 @@ function showNodeDetails(details) {
     nodeDetails.style.zIndex = '100';
     nodeDetails.style.width = `${detailsWidth}px`;
     nodeDetails.style.maxHeight = `${containerRect.height - 70}px`; // 减少高度，避免超出容器
-    nodeDetails.style.overflowY = 'auto';
+    nodeDetails.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)'; // 添加阴影效果提高可视性
+}
+
+/**
+ * 隐藏节点详情
+ */
+function hideNodeDetails() {
+    nodeDetails.style.display = 'none';
 }
 
 /**
@@ -963,77 +1016,52 @@ function initializeCharts() {
                     
                     // 检查是否是分组节点
                     if (params.data.isGroup === true) {
-                        // 分组节点显示分组信息
-                        const groupInfo = {
-                            tableName: params.data.tableName.replace('_group', ''),
-                            data: {
-                                '节点类型': '分组节点',
-                                '节点数量': params.data.children ? params.data.children.length : 0,
-                                '节点名称': params.data.name
-                            }
-                        };
-                        showNodeDetails(groupInfo);
+                        console.log('点击了分组节点:', params.data.name);
+                        
+                        // 这里可以处理分组节点的逻辑
+                        // 例如展开/折叠该组的子节点等
+                        
+                        // 暂时不显示详情面板，直接返回
                         return;
                     }
                     
-                    // 获取当前环境的数据库配置
-                    const environment = dbEnvironmentSelect.value;
-                    const dbName = dbNameInput.value.trim();
-                    const currentDbConfig = dbConfigs[environment];
-                    const ytenant_id = document.getElementById('ytenant_id').value.trim() || "0"; // 获取租户ID
-                    
-                    // 防止获取非表节点的详情
-                    if (!params.data.tableName || params.data.tableName.includes('_group')) {
-                        showNodeDetails({ 
-                            tableName: params.data.tableName || '未知表',
-                            data: { 
-                                id: params.data.id || '未知ID', 
-                                name: params.data.name || '未知名称',
-                                '节点类型': '导航节点'
-                            }
-                        });
-                        return;
-                    }
-                    
-                    console.log('获取表详情参数:', {
-                        environment,
-                        dbName,
-                        tableName: params.data.tableName,
-                        id: params.data.id,
-                        ytenant_id // 添加租户ID
+                    // 显示节点详情
+                    showNodeDetails({
+                        tableName: params.data.tableName || params.name,
+                        data: params.data
                     });
-                    
-                    // 尝试获取节点详细信息
-                    try {
-                        const details = await fetchTableDetails(
-                            environment,
-                            dbName,
-                            params.data.tableName,
-                            params.data.id,
-                            currentDbConfig,
-                            ytenant_id // 添加租户ID参数
-                        );
-                        showNodeDetails(details);
-                    } catch (error) {
-                        console.warn('无法获取详细信息，使用节点数据:', error);
-                        // 使用现有节点数据显示
-                        showNodeDetails({ 
-                            tableName: params.data.tableName,
-                            data: { id: params.data.id, name: params.data.name, '错误信息': error.message }
-                        });
-                    }
                 } catch (error) {
-                    console.error('处理节点点击事件失败:', error);
+                    console.error('处理节点点击事件时出错:', error);
                     alert('处理节点点击事件失败: ' + error.message);
                 }
+            } else {
+                // 点击了图表空白区域，隐藏详情面板
+                hideNodeDetails();
             }
         });
         
-        return myChart;
+        // 绑定图表背景点击事件，关闭节点详情
+        myChart.getZr().on('click', function(event) {
+            // 如果点击的是空白处（没有触发图表节点点击事件）
+            if (!event.target) {
+                hideNodeDetails();
+            }
+        });
+        
+        // 添加自定义样式
+        addCustomStyles();
+        
+        // 监听窗口大小变化
+        window.addEventListener('resize', function() {
+            if (myChart) {
+                myChart.resize();
+            }
+        });
+        
+        console.log('图表事件绑定完成');
     } catch (error) {
         console.error('初始化图表失败:', error);
-        graphContainer.innerHTML = '<div style="text-align:center;padding:20px;color:#e8eaed">图表初始化失败: ' + error.message + '</div>';
-        return null;
+        alert('初始化图表失败: ' + error.message);
     }
 }
 
