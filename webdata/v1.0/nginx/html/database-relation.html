@@ -165,6 +165,7 @@
             margin-right: auto;
             box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
             border: 1px solid #414247;
+            animation: slide-in 0.3s ease-out;
         }
         .node-details h3 {
             margin-top: 0;
@@ -219,9 +220,10 @@
         /* 添加详情内容容器样式 */
         #nodeDetailContent {
             overflow-x: hidden;
-            max-height: calc(80vh - 100px);
+            max-height: calc(80vh - 160px); /* 减去头部和底部按钮高度 */
             overflow-y: auto;
             padding-right: 6px;
+            padding-bottom: 60px; /* 增加底部空间，避免内容被按钮遮挡 */
             scrollbar-width: thin;
             scrollbar-color: #5f6368 #303134;
         }
@@ -257,39 +259,88 @@
             outline: none;
             box-shadow: 0 0 0 2px rgba(138, 180, 248, 0.15);
         }
-        /* 保存取消按钮样式优化 */
+        /* 调整卡片详情内的按钮大小和布局 */
         #nodeDetailActions {
-            margin-top: 12px;
-            padding-top: 12px;
+            margin-top: 16px;
+            padding: 16px;
             border-top: 1px solid #414247;
+            display: flex;
+            justify-content: center; /* 改为居中布局 */
+            align-items: center;
+            gap: 16px; /* 增加按钮间隔 */
+            position: absolute; /* 改为绝对定位 */
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: #303134;
+            z-index: 10;
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
+            border-radius: 0 0 8px 8px;
+            margin-left: 0;
+            margin-right: 0;
+            margin-bottom: 0;
+            width: 100%;
+            box-sizing: border-box;
         }
-        #saveNodeDetailsButton {
-            background-color: #1a73e8;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.2s;
+        
+        #saveNodeDetailsButton, #cancelNodeEditButton {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
         }
-        #saveNodeDetailsButton:hover {
-            background-color: #1765cc;
+        
+        #saveNodeDetailsButton svg, #cancelNodeEditButton svg {
+            margin-right: 6px;
+            position: relative;
+            top: -1px;
+            flex-shrink: 0;
         }
+        
         #cancelNodeEditButton {
+            min-width: 100px; /* 设置最小宽度 */
             background-color: #3c4043;
             color: #e8eaed;
             border: 1px solid #5f6368;
-            padding: 8px 16px;
+            padding: 10px 20px;
             border-radius: 4px;
             font-size: 13px;
             font-weight: 500;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: all 0.2s;
         }
+        
         #cancelNodeEditButton:hover {
             background-color: #4a4d51;
+            border-color: #6e7175;
+        }
+        
+        #cancelNodeEditButton:active {
+            transform: translateY(1px);
+        }
+        
+        #saveNodeDetailsButton {
+            min-width: 120px; /* 设置最小宽度 */
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        
+        #saveNodeDetailsButton:hover {
+            background-color: #1765cc;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+        }
+        
+        #saveNodeDetailsButton:active {
+            transform: translateY(1px);
+            box-shadow: 0 0px 2px rgba(0, 0, 0, 0.4);
         }
         .config-modal {
             display: none;
@@ -393,7 +444,23 @@
                 z-index: 1000 !important;
             }
             #nodeDetailContent {
-                max-height: calc(70vh - 120px) !important;
+                max-height: calc(70vh - 160px) !important;
+                padding-bottom: 70px !important; /* 移动设备上增加更多底部空间 */
+            }
+            #nodeDetailActions {
+                padding: 12px;
+                box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
+                border-radius: 0;
+                position: absolute;
+                bottom: 0;
+                gap: 8px;
+            }
+            #saveNodeDetailsButton, #cancelNodeEditButton {
+                flex-grow: 1;
+                justify-content: center;
+                padding: 10px 12px;
+                font-size: 14px;
+                min-width: auto;
             }
             .search-container {
                 bottom: calc(70vh + 10px) !important;
@@ -406,21 +473,111 @@
             to { transform: translateY(0); opacity: 1; }
         }
         
-        .node-details {
-            animation: slide-in 0.3s ease-out;
+        /* 节点详情字段搜索 */
+        .node-detail-search {
+            margin-bottom: 12px;
+            position: relative;
         }
-        
-        .config-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
+        .node-detail-search input {
             width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
+            background-color: #3c4043;
+            border: 1px solid #5f6368;
+            border-radius: 4px;
+            padding: 8px 12px;
+            padding-left: 32px;
+            color: #e8eaed;
+            font-size: 13px;
+        }
+        .node-detail-search input:focus {
+            border-color: #8ab4f8;
+            outline: none;
+        }
+        .node-detail-search svg {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #8ab4f8;
+        }
+        /* 高亮匹配的字段 */
+        .field-match {
+            background-color: rgba(138, 180, 248, 0.2);
+        }
+        .field-priority-high {
+            background-color: rgba(138, 180, 248, 0.3);
+        }
+        .field-priority-medium {
+            background-color: rgba(138, 180, 248, 0.15);
+        }
+        .field-priority-low {
+            background-color: rgba(138, 180, 248, 0.05);
+        }
+        /* 非匹配行暂时隐藏 */
+        .field-hidden {
+            display: none;
+        }
+        /* 无结果提示 */
+        .no-matches-message {
+            padding: 16px;
+            text-align: center;
+            color: #aaa;
+            font-style: italic;
+            display: none;
+        }
+        /* 优化节点详情头部 */
+        .node-details-header {
+            display: flex;
+            justify-content: space-between;
             align-items: center;
-            justify-content: center;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #414247;
+            padding-bottom: 12px;
+        }
+        .node-details-title {
+            font-size: 18px;
+            font-weight: 500;
+            color: #8ab4f8;
+            display: flex;
+            align-items: center;
+        }
+        .node-details-title svg {
+            margin-right: 8px;
+        }
+        .node-details-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .node-details-edit-btn {
+            background-color: #3c4043;
+            border: 1px solid #5f6368;
+            border-radius: 4px;
+            color: #e8eaed;
+            padding: 6px 12px;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background-color 0.2s;
+        }
+        .node-details-edit-btn:hover {
+            background-color: #4a4d51;
+        }
+        .node-details-edit-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+        /* 节点详情搜索和工具栏 */
+        .node-details-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            gap: 12px;
+        }
+        .node-detail-search {
+            flex-grow: 1;
+            margin-bottom: 0;
         }
     </style>
 </head>
@@ -526,10 +683,49 @@
         
         <!-- 节点详情展示 -->
         <div class="node-details" id="nodeDetails">
+            <div class="node-details-header" id="nodeDetailsHeader">
+                <div class="node-details-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/>
+                        <path d="M6.5 6.5v3h3v-3h-3z"/>
+                        <path d="M2.5 11.5h1v-1h-1v1zm2 0h1v-1h-1v1zm2 0h1v-1h-1v1zm2 0h1v-1h-1v1zm2 0h1v-1h-1v1zm0-2h1v-1h-1v1zm0-2h1v-1h-1v1zm0-2h1v-1h-1v1zm-8 6h1v-1h-1v1zm0-2h1v-1h-1v1zm0-2h1v-1h-1v1zm0-2h1v-1h-1v1z"/>
+                    </svg>
+                    <span id="nodeDetailTitle">节点详情</span>
+                </div>
+                <div class="node-details-actions">
+                    <button class="node-details-edit-btn" id="toggleEditModeButton">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.499.499 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11l.178-.178z"/>
+                        </svg>
+                        编辑
+                    </button>
+                </div>
+            </div>
+            
+            <div class="node-details-toolbar">
+                <div class="node-detail-search" id="nodeDetailSearch">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                    </svg>
+                    <input type="text" id="fieldSearchInput" placeholder="搜索字段..." autocomplete="off">
+                </div>
+            </div>
+            
+            <div class="no-matches-message" id="noMatchesMessage">未找到匹配的字段</div>
             <div id="nodeDetailContent"></div>
-            <div class="flex justify-end mt-4" id="nodeDetailActions" style="display: none;">
-                <button id="saveNodeDetailsButton" class="button mr-2">保存修改</button>
-                <button id="cancelNodeEditButton" class="button">取消</button>
+            <div id="nodeDetailActions" style="display: none;">
+                <button id="cancelNodeEditButton">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 5px; position: relative; top: -1px;">
+                        <path d="M11.354 4.646a.5.5 0 0 1 0 .708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708L8 7.293l2.646-2.647a.5.5 0 0 1 .708 0z"/>
+                    </svg>
+                    取消
+                </button>
+                <button id="saveNodeDetailsButton">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 5px; position: relative; top: -1px;">
+                        <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
+                    </svg>
+                    保存修改
+                </button>
             </div>
         </div>
         
@@ -622,6 +818,36 @@
             
             // 取消按钮事件
             document.getElementById('cancelNodeEditButton').addEventListener('click', cancelNodeEdit);
+            
+            // 字段搜索功能
+            const fieldSearchInput = document.getElementById('fieldSearchInput');
+            fieldSearchInput.addEventListener('input', filterNodeDetailFields);
+            
+            // 编辑模式切换按钮
+            const toggleEditModeButton = document.getElementById('toggleEditModeButton');
+            toggleEditModeButton.addEventListener('click', function() {
+                // 获取节点详情内容
+                const nodeDetailContent = document.getElementById('nodeDetailContent');
+                const table = nodeDetailContent.querySelector('table');
+                
+                if (!table) return;
+                
+                // 如果当前没有编辑状态，进入编辑模式
+                if (Object.keys(editedFields).length === 0) {
+                    makeTableCellEditable(table);
+                    this.textContent = '取消';
+                    this.classList.add('active');
+                    this.style.display = 'none'; // 隐藏编辑按钮
+                    document.getElementById('nodeDetailActions').style.display = 'flex'; // 显示保存和取消按钮
+                } else {
+                    // 如果已经是编辑状态，询问是否取消
+                    if (confirm('是否取消编辑？已修改的内容将不会保存。')) {
+                        cancelNodeEdit();
+                        this.textContent = '编辑';
+                        this.classList.remove('active');
+                    }
+                }
+            });
             
             // 其他初始化代码...
         });
@@ -719,6 +945,18 @@
                 if (result.code === 200) {
                     alert('保存成功');
                     
+                    // 重置编辑状态
+                    editedFields = {};
+                    document.getElementById('nodeDetailActions').style.display = 'none';
+                    
+                    // 重新显示编辑按钮
+                    const toggleEditModeButton = document.getElementById('toggleEditModeButton');
+                    if (toggleEditModeButton) {
+                        toggleEditModeButton.style.display = 'flex';
+                        toggleEditModeButton.textContent = '编辑';
+                        toggleEditModeButton.classList.remove('active');
+                    }
+                    
                     // 重新获取节点详情以刷新数据
                     const tableDetailsRequest = {
                         environment: document.getElementById('dbEnvironment').value,
@@ -750,6 +988,18 @@
         
         // 取消编辑，恢复为查看模式
         function cancelNodeEdit() {
+            // 重置编辑状态
+            editedFields = {};
+            document.getElementById('nodeDetailActions').style.display = 'none';
+            
+            // 重新显示编辑按钮
+            const toggleEditModeButton = document.getElementById('toggleEditModeButton');
+            if (toggleEditModeButton) {
+                toggleEditModeButton.style.display = 'flex';
+                toggleEditModeButton.textContent = '编辑';
+                toggleEditModeButton.classList.remove('active');
+            }
+            
             // 重新获取节点详情以取消编辑
             if (currentEditingNodeId && currentEditingTableName) {
                 const tableDetailsRequest = {
@@ -772,11 +1022,170 @@
             }
         }
         
+        // 过滤节点详情字段
+        function filterNodeDetailFields() {
+            const searchTerm = document.getElementById('fieldSearchInput').value.trim().toLowerCase();
+            const nodeDetailContent = document.getElementById('nodeDetailContent');
+            const table = nodeDetailContent.querySelector('table');
+            const noMatchesMessage = document.getElementById('noMatchesMessage');
+            
+            if (!table) return;
+            
+            const rows = table.querySelectorAll('tr');
+            let hasMatches = false;
+            
+            // 如果搜索词为空，显示所有行
+            if (searchTerm === '') {
+                rows.forEach(row => {
+                    row.classList.remove('field-hidden', 'field-match', 'field-priority-high', 'field-priority-medium', 'field-priority-low');
+                    row.style.display = '';
+                });
+                noMatchesMessage.style.display = 'none';
+                return;
+            }
+            
+            // 搜索并根据优先级排序
+            const matchedRows = [];
+            const unmatchedRows = [];
+            
+            rows.forEach(row => {
+                const th = row.querySelector('th');
+                if (!th) return;
+                
+                const fieldName = th.textContent.trim().toLowerCase();
+                // 计算匹配度和优先级
+                let priority = 0;
+                
+                // 完全匹配
+                if (fieldName === searchTerm) {
+                    priority = 3; // 最高优先级
+                } 
+                // 字段名以搜索词开头
+                else if (fieldName.startsWith(searchTerm)) {
+                    priority = 2; // 高优先级
+                }
+                // 字段名包含搜索词
+                else if (fieldName.includes(searchTerm)) {
+                    priority = 1; // 中优先级
+                }
+                // 检查每个单词的开头是否匹配（驼峰或下划线分隔）
+                else if (fieldName.split(/[_\s]/).some(word => word.startsWith(searchTerm))) {
+                    priority = 0.5; // 低优先级
+                }
+                
+                // 匹配的行
+                if (priority > 0) {
+                    hasMatches = true;
+                    matchedRows.push({row, priority});
+                } else {
+                    unmatchedRows.push(row);
+                }
+            });
+            
+            // 根据优先级排序
+            matchedRows.sort((a, b) => b.priority - a.priority);
+            
+            // 先移除所有行，然后按优先级添加回来
+            const fragment = document.createDocumentFragment();
+            
+            // 添加匹配的行
+            matchedRows.forEach(({row, priority}) => {
+                // 移除旧的优先级类
+                row.classList.remove('field-hidden', 'field-match', 'field-priority-high', 'field-priority-medium', 'field-priority-low');
+                
+                // 添加新的优先级类
+                if (priority === 3) {
+                    row.classList.add('field-priority-high');
+                } else if (priority === 2) {
+                    row.classList.add('field-priority-high');
+                } else if (priority === 1) {
+                    row.classList.add('field-priority-medium');
+                } else {
+                    row.classList.add('field-priority-low');
+                }
+                
+                row.classList.add('field-match');
+                row.style.display = '';
+                fragment.appendChild(row);
+            });
+            
+            // 添加不匹配的行（隐藏）
+            unmatchedRows.forEach(row => {
+                row.classList.add('field-hidden');
+                row.style.display = 'none';
+                fragment.appendChild(row);
+            });
+            
+            // 清空表格并添加排序后的行
+            while (table.querySelector('tbody').firstChild) {
+                table.querySelector('tbody').firstChild.remove();
+            }
+            table.querySelector('tbody').appendChild(fragment);
+            
+            // 显示或隐藏无匹配消息
+            noMatchesMessage.style.display = hasMatches ? 'none' : 'block';
+        }
+        
+        // 重写showNodeDetails函数，添加搜索框清空和标题更新
+        const originalShowNodeDetails = window.showNodeDetails;
+        window.showNodeDetails = function(details) {
+            // 调用原始函数
+            if (typeof originalShowNodeDetails === 'function') {
+                originalShowNodeDetails(details);
+            }
+            
+            // 更新节点详情标题
+            const nodeDetailTitle = document.getElementById('nodeDetailTitle');
+            if (nodeDetailTitle && details && details.tableName) {
+                nodeDetailTitle.textContent = `表 ${details.tableName} 详情`;
+            } else {
+                nodeDetailTitle.textContent = '节点详情';
+            }
+            
+            // 重置编辑按钮
+            const toggleEditModeButton = document.getElementById('toggleEditModeButton');
+            if (toggleEditModeButton) {
+                toggleEditModeButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.499.499 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11l.178-.178z"/></svg> 编辑';
+                toggleEditModeButton.classList.remove('active');
+                toggleEditModeButton.style.display = 'flex'; // 确保编辑按钮显示
+            }
+            
+            // 隐藏节点操作按钮
+            const nodeDetailActions = document.getElementById('nodeDetailActions');
+            if (nodeDetailActions) {
+                nodeDetailActions.style.display = 'none';
+            }
+            
+            // 重置已编辑字段
+            editedFields = {};
+            
+            // 清空搜索框
+            const fieldSearchInput = document.getElementById('fieldSearchInput');
+            if (fieldSearchInput) {
+                fieldSearchInput.value = '';
+            }
+            
+            // 显示所有字段
+            const nodeDetailContent = document.getElementById('nodeDetailContent');
+            const rows = nodeDetailContent.querySelectorAll('table tr');
+            rows.forEach(row => {
+                row.classList.remove('field-hidden', 'field-match', 'field-priority-high', 'field-priority-medium', 'field-priority-low');
+                row.style.display = '';
+            });
+            
+            // 隐藏无匹配消息
+            const noMatchesMessage = document.getElementById('noMatchesMessage');
+            if (noMatchesMessage) {
+                noMatchesMessage.style.display = 'none';
+            }
+        };
+        
         // 导出函数到全局作用域，使其可以在其他脚本中使用
         window.makeTableCellEditable = makeTableCellEditable;
         window.saveNodeDetails = saveNodeDetails;
         window.cancelNodeEdit = cancelNodeEdit;
         window.editedFields = editedFields;
+        window.filterNodeDetailFields = filterNodeDetailFields;
     </script>
 </body>
 </html> 

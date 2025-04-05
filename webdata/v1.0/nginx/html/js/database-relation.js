@@ -703,51 +703,6 @@ function showNodeDetails(details) {
         hideNodeDetails();
     });
     
-    // 创建编辑按钮
-    const editButton = document.createElement('button');
-    editButton.textContent = '编辑';
-    editButton.className = 'button bg-blue-600 hover:bg-blue-500';
-    editButton.style.position = 'absolute';
-    editButton.style.right = '40px';
-    editButton.style.top = '10px';
-    editButton.style.fontSize = '12px';
-    editButton.style.padding = '4px 12px';
-    editButton.style.cursor = 'pointer';
-    editButton.style.borderRadius = '4px';
-    editButton.style.border = 'none';
-    editButton.style.backgroundColor = '#1a73e8';
-    editButton.style.color = 'white';
-    editButton.title = '编辑节点详情';
-    
-    // 添加编辑按钮悬停效果
-    editButton.addEventListener('mouseover', function() {
-        this.style.backgroundColor = '#1765cc';
-    });
-    editButton.addEventListener('mouseout', function() {
-        this.style.backgroundColor = '#1a73e8';
-    });
-    
-    // 添加编辑按钮点击事件
-    editButton.addEventListener('click', function() {
-        // 调用定义在HTML中的makeTableCellEditable函数
-        if (typeof window.makeTableCellEditable === 'function') {
-            const table = nodeDetailContent.querySelector('table');
-            window.makeTableCellEditable(table);
-            this.style.display = 'none'; // 隐藏编辑按钮
-            document.getElementById('nodeDetailActions').style.display = 'flex'; // 显示保存和取消按钮
-        } else {
-            console.error('makeTableCellEditable函数未定义');
-            if (typeof makeTableCellEditable === 'function') {
-                const table = nodeDetailContent.querySelector('table');
-                makeTableCellEditable(table);
-                this.style.display = 'none'; // 隐藏编辑按钮
-                document.getElementById('nodeDetailActions').style.display = 'flex'; // 显示保存和取消按钮
-            } else {
-                alert('编辑功能不可用');
-            }
-        }
-    });
-    
     // 添加详情标题和节点信息
     const titleContainer = document.createElement('div');
     titleContainer.style.display = 'flex';
@@ -780,7 +735,6 @@ function showNodeDetails(details) {
     
     nodeDetailContent.appendChild(titleContainer);
     nodeDetailContent.appendChild(closeButton);
-    nodeDetailContent.appendChild(editButton);
     
     // 创建表格显示详情
     const table = document.createElement('table');
