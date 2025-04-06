@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -174,6 +175,42 @@ public class DbRelationController {
         } catch (Exception e) {
             logger.error("更新表数据失败", e);
             return ApiResponse.error("更新表数据失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取数据库列表
+     * 
+     * @param request 包含环境和数据库配置的请求
+     * @return 数据库列表
+     */
+    @PostMapping("/database-list")
+    public ApiResponse<List<String>> getDatabaseList(@RequestBody DbRelationRequest request) {
+        logger.info("接收到获取数据库列表请求: 环境={}", request.getEnvironment());
+        
+        try {
+            // 参数验证
+            if (request.getDbConfig() == null) {
+                return ApiResponse.error("数据库配置未指定");
+            }
+            
+            // 创建DTO对象
+            DbConfigDTO dbConfigDTO = new DbConfigDTO();
+            dbConfigDTO.setHost(request.getDbConfig().getHost());
+            dbConfigDTO.setPort(request.getDbConfig().getPort());
+            dbConfigDTO.setUsername(request.getDbConfig().getUsername());
+            dbConfigDTO.setPassword(request.getDbConfig().getPassword());
+            
+            // 调用服务获取数据库列表
+            List<String> databaseList = dbRelationService.getDatabaseList(
+                request.getEnvironment(),
+                dbConfigDTO
+            );
+            
+            return ApiResponse.success(databaseList);
+        } catch (Exception e) {
+            logger.error("获取数据库列表失败", e);
+            return ApiResponse.error("获取数据库列表失败: " + e.getMessage());
         }
     }
 } 

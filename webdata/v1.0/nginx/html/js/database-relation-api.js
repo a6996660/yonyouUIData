@@ -21,6 +21,7 @@ window.fetchTableDetails = fetchTableDetails;
 window.updateTableData = updateTableData;
 window.saveDbConfigsToServer = saveDbConfigsToServer;
 window.fetchDbConfigsFromServer = fetchDbConfigsFromServer;
+window.fetchDatabaseList = fetchDatabaseList;
 
 /**
  * 获取数据库表关联树形结构
@@ -558,4 +559,57 @@ window.generateMockData = function(billNo) {
     };
     
     return transformToEChartsFormat(mockApiData);
+}
+
+/**
+ * 获取数据库列表
+ * 
+ * @param {string} environment 环境（测试、日常、预发）
+ * @param {Object} dbConfig 数据库配置信息
+ * @returns {Promise} 返回数据库列表
+ */
+async function fetchDatabaseList(environment, dbConfig) {
+    try {
+        const url = `${API_BASE_URL}/db-relation/database-list`;
+        
+        const requestData = {
+            environment: environment,
+            dbConfig: dbConfig
+        };
+        
+        console.log("获取数据库列表请求数据:", {
+            environment,
+            dbConfig: dbConfig ? { ...dbConfig, password: '******' } : null // 隐藏密码
+        });
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        if (!response.ok) {
+            let errorData;
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                errorData = { message: '未知错误' };
+            }
+            console.error("API错误响应:", errorData);
+            throw new Error(`API请求失败: ${response.status} - ${JSON.stringify(errorData)}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.code !== '0000' && data.code !== 200) {
+            throw new Error(data.message || '获取数据库列表失败');
+        }
+        
+        return data.data || [];
+    } catch (error) {
+        console.error('获取数据库列表失败:', error);
+        throw error;
+    }
 } 

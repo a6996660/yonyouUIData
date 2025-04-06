@@ -4,6 +4,7 @@ import com.yonyou.dbtreeview.dto.DbConfigDTO;
 import com.yonyou.dbtreeview.model.DbTreeResponse;
 import com.yonyou.dbtreeview.model.TableDetailsResponse;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -49,4 +50,13 @@ public interface DbRelationService {
      * @return 返回包含执行SQL的Map，键为"success"表示是否成功，键为"sql"表示执行的SQL语句
      */
     Map<String, Object> updateTableData(String environment, String dbName, String tableName, String id, String ytenant_id, Map<String, Object> editedFields, DbConfigDTO dbConfig);
+    
+    /**
+     * 获取数据库列表
+     *
+     * @param environment 环境（测试、日常、预发）
+     * @param dbConfig 数据库配置
+     * @return 数据库列表
+     */
+    List<String> getDatabaseList(String environment, DbConfigDTO dbConfig);
 } 

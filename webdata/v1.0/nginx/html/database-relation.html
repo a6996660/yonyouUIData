@@ -1183,6 +1183,105 @@
             70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
             100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
         }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* 数据库选择框样式 */
+        .database-select-container {
+            position: relative;
+            z-index: 100;
+        }
+        
+        .custom-select-wrapper {
+            position: relative;
+            width: 140px;
+        }
+        
+        .custom-select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            display: none;
+            z-index: 200;
+            box-shadow: var(--shadow-md);
+            scrollbar-width: thin;
+            scrollbar-color: #494b50 transparent;
+        }
+        
+        .custom-select-dropdown::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .custom-select-dropdown::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .custom-select-dropdown::-webkit-scrollbar-thumb {
+            background-color: #494b50;
+            border-radius: 3px;
+        }
+        
+        .database-option {
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            font-size: 13px;
+        }
+        
+        .database-option:hover,
+        .database-option.highlighted {
+            background-color: var(--accent-color);
+            color: white;
+        }
+        
+        .database-option.active {
+            background-color: rgba(59, 130, 246, 0.2);
+            color: var(--accent-color);
+        }
+        
+        .database-loading {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: none;
+        }
+        
+        .mini-loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(59, 130, 246, 0.2);
+            border-top-color: var(--accent-color);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        
+        .database-empty {
+            padding: 10px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-style: italic;
+            font-size: 12px;
+        }
+        
+        .database-error {
+            padding: 10px;
+            text-align: center;
+            color: var(--error-color);
+            font-size: 12px;
+        }
+        
+        /* 图表容器样式 */
     </style>
 </head>
 <body>
@@ -1200,9 +1299,16 @@
                     </select>
                 </div>
                 
-                <div class="input-group">
+                <div class="input-group database-select-container">
                     <label for="dbName">数据库:</label>
-                    <input type="text" id="dbName" class="input-field" placeholder="数据库名称">
+                    <div class="custom-select-wrapper">
+                        <input type="text" id="dbNameSearch" class="input-field" placeholder="搜索或选择数据库...">
+                        <div class="custom-select-dropdown" id="dbDropdown"></div>
+                    </div>
+                    <input type="hidden" id="dbName" value="">
+                    <div class="database-loading" id="databaseLoading">
+                        <span class="mini-loading-spinner"></span>
+                    </div>
                 </div>
                 
                 <div class="input-group">

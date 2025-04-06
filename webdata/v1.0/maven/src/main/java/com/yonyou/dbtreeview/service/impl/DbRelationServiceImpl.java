@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 数据库关系服务实现
@@ -185,6 +187,44 @@ public class DbRelationServiceImpl implements DbRelationService {
         }
     }
     
+    @Override
+    public List<String> getDatabaseList(String environment, DbConfigDTO dbConfig) {
+        Connection conn = null;
+        List<String> databaseList = new ArrayList<>();
+        
+        try {
+            // 连接到MySQL服务器（不指定具体数据库）
+            conn = getConnectionWithoutDb(dbConfig);
+            
+            // 查询所有数据库
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery("SHOW DATABASES");
+            
+            // 添加数据库到列表
+            while (rs.next()) {
+                String dbName = rs.getString(1);
+                // 排除系统数据库
+                if (!dbName.equals("information_schema") && 
+                    !dbName.equals("mysql") && 
+                    !dbName.equals("performance_schema") && 
+                    !dbName.equals("sys")) {
+                    databaseList.add(dbName);
+                }
+            }
+            
+            rs.close();
+            stmt.close();
+            
+            logger.info("获取到{}个数据库", databaseList.size());
+            return databaseList;
+        } catch (Exception e) {
+            logger.error("获取数据库列表失败", e);
+            throw new RuntimeException("获取数据库列表失败: " + e.getMessage(), e);
+        } finally {
+            closeConnection(conn);
+        }
+    }
+    
     /**
      * 获取数据库连接
      */
@@ -211,6 +251,29 @@ public class DbRelationServiceImpl implements DbRelationService {
             return DriverManager.getConnection(url, dbConfig.getUsername(), dbConfig.getPassword());
         } catch (ClassNotFoundException e) {
             throw new SQLException("MySQL驱动加载失败", e);
+        }
+    }
+    
+    /**
+     * 获取数据库连接（不指定具体数据库）
+     */
+    private Connection getConnectionWithoutDb(DbConfigDTO dbConfig) throws SQLException {
+        if (dbConfig == null || dbConfig.getHost() == null || dbConfig.getPort() == null) {
+            throw new SQLException("数据库配置不完整");
+        }
+        
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            
+            // 不指定具体数据库的连接URL
+            String url = "jdbc:mysql://" + dbConfig.getHost() + ":" + dbConfig.getPort() + 
+                "?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true";
+            
+            logger.debug("数据库连接URL: {}", url);
+            
+            return DriverManager.getConnection(url, dbConfig.getUsername(), dbConfig.getPassword());
+        } catch (ClassNotFoundException e) {
+            throw new SQLException("MySQL驱动加载失败: " + e.getMessage(), e);
         }
     }
     

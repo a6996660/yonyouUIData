@@ -5,6 +5,8 @@
 // DOM元素
 const dbEnvironmentSelect = document.getElementById('dbEnvironment');
 const dbNameInput = document.getElementById('dbName');
+const dbNameSearchInput = document.getElementById('dbNameSearch');
+const dbDropdown = document.getElementById('dbDropdown');
 const tableCodeInput = document.getElementById('tableCode');
 const searchButton = document.getElementById('searchButton');
 const configButton = document.getElementById('configButton');
@@ -12,12 +14,16 @@ const saveConfigButton = document.getElementById('saveConfigButton');
 const closeConfigModal = document.getElementById('closeConfigModal');
 const configModal = document.getElementById('configModal');
 const loadingIndicator = document.getElementById('loadingIndicator');
+const databaseLoading = document.getElementById('databaseLoading');
 const graphContainer = document.getElementById('graph-container');
 const nodeDetails = document.getElementById('nodeDetails');
 const nodeDetailContent = document.getElementById('nodeDetailContent');
 
 // 图表实例
 let myChart = null;
+
+// 数据库列表
+let databaseList = [];
 
 // 数据库配置存储
 let dbConfigs = {
@@ -33,6 +39,9 @@ let currentNodeData = null;
 document.addEventListener('DOMContentLoaded', async function() {
     await loadDbConfigsFromServer();
     initEventListeners();
+    
+    // 加载数据库列表
+    loadDatabaseList();
     
     // 添加调试功能
     const debugButton = document.getElementById('debugButton');
@@ -56,6 +65,33 @@ document.addEventListener('DOMContentLoaded', async function() {
 function initEventListeners() {
     // 搜索按钮点击事件
     searchButton.addEventListener('click', performSearch);
+    
+    // 环境选择变化事件 - 触发加载数据库列表
+    dbEnvironmentSelect.addEventListener('change', function() {
+        loadDatabaseList();
+    });
+    
+    // 数据库搜索框获得焦点时显示下拉列表
+    dbNameSearchInput.addEventListener('focus', function() {
+        showDatabaseDropdown();
+    });
+    
+    // 数据库搜索框失去焦点时隐藏下拉列表（延迟隐藏，以便点击选项生效）
+    dbNameSearchInput.addEventListener('blur', function() {
+        setTimeout(function() {
+            hideDatabaseDropdown();
+        }, 200);
+    });
+    
+    // 数据库搜索框输入事件 - 过滤数据库列表
+    dbNameSearchInput.addEventListener('input', function() {
+        filterDatabaseOptions(this.value);
+    });
+    
+    // 数据库搜索框按键事件 - 上下键导航和回车键选择
+    dbNameSearchInput.addEventListener('keydown', function(e) {
+        handleDatabaseKeyboardNavigation(e);
+    });
     
     // 配置按钮点击事件
     configButton.addEventListener('click', function() {
@@ -81,6 +117,9 @@ function initEventListeners() {
             
             // 显示成功消息
             alert('配置已成功保存！');
+            
+            // 重新加载数据库列表
+            loadDatabaseList();
         } catch (error) {
             // 恢复按钮状态
             saveConfigButton.disabled = false;
@@ -177,6 +216,12 @@ async function performSearch() {
     const ytenant_id = document.getElementById('ytenant_id').value.trim() || "0"; // 获取租户ID，默认为0
     
     // 验证输入
+    if (!dbName) {
+        alert('请选择数据库！');
+        dbNameSearchInput.focus();
+        return;
+    }
+    
     if (!billNo) {
         alert('请输入表单编码！');
         tableCodeInput.focus();
@@ -2962,4 +3007,215 @@ function getNodeIndex(data, nodeId) {
     }
     
     return -1;
+}
+
+/**
+ * 加载数据库列表
+ */
+async function loadDatabaseList() {
+    try {
+        // 清空选择
+        dbNameInput.value = '';
+        dbNameSearchInput.value = '';
+        
+        // 清空下拉列表
+        dbDropdown.innerHTML = '';
+        
+        // 获取当前环境
+        const environment = dbEnvironmentSelect.value;
+        
+        // 获取当前环境的数据库配置
+        const dbConfig = dbConfigs[environment];
+        
+        // 检查配置是否填写
+        if (!dbConfig || !dbConfig.host || !dbConfig.port || !dbConfig.username || !dbConfig.password) {
+            // 显示配置未设置的提示
+            dbDropdown.innerHTML = '<div class="database-error">请先配置数据库连接信息</div>';
+            showDatabaseDropdown();
+            return;
+        }
+        
+        // 显示加载中
+        databaseLoading.style.display = 'block';
+        
+        try {
+            // 调用API获取数据库列表
+            databaseList = await fetchDatabaseList(environment, dbConfig);
+            
+            // 渲染数据库列表
+            renderDatabaseOptions(databaseList);
+        } catch (error) {
+            console.error('获取数据库列表失败:', error);
+            dbDropdown.innerHTML = `<div class="database-error">获取数据库列表失败: ${error.message}</div>`;
+            showDatabaseDropdown();
+        } finally {
+            // 隐藏加载中
+            databaseLoading.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('加载数据库列表出错:', error);
+        databaseLoading.style.display = 'none';
+    }
+}
+
+/**
+ * 渲染数据库选项列表
+ * @param {Array} databases 数据库列表
+ */
+function renderDatabaseOptions(databases) {
+    // 清空下拉列表
+    dbDropdown.innerHTML = '';
+    
+    // 检查是否有数据
+    if (!databases || databases.length === 0) {
+        dbDropdown.innerHTML = '<div class="database-empty">未找到数据库</div>';
+        return;
+    }
+    
+    // 创建选项
+    databases.forEach(db => {
+        const option = document.createElement('div');
+        option.className = 'database-option';
+        option.textContent = db;
+        option.setAttribute('data-value', db);
+        
+        // 点击选择
+        option.addEventListener('click', function() {
+            selectDatabase(db);
+        });
+        
+        dbDropdown.appendChild(option);
+    });
+}
+
+/**
+ * 显示数据库下拉列表
+ */
+function showDatabaseDropdown() {
+    dbDropdown.style.display = 'block';
+}
+
+/**
+ * 隐藏数据库下拉列表
+ */
+function hideDatabaseDropdown() {
+    dbDropdown.style.display = 'none';
+}
+
+/**
+ * 选择数据库
+ * @param {string} database 数据库名
+ */
+function selectDatabase(database) {
+    dbNameInput.value = database;
+    dbNameSearchInput.value = database;
+    hideDatabaseDropdown();
+}
+
+/**
+ * 过滤数据库选项
+ * @param {string} searchText 搜索文本
+ */
+function filterDatabaseOptions(searchText) {
+    // 首先显示下拉列表
+    showDatabaseDropdown();
+    
+    // 如果没有数据，尝试加载
+    if (databaseList.length === 0) {
+        loadDatabaseList();
+        return;
+    }
+    
+    // 清空高亮
+    const options = dbDropdown.querySelectorAll('.database-option');
+    options.forEach(option => {
+        option.classList.remove('highlighted');
+    });
+    
+    if (!searchText) {
+        // 如果搜索框为空，显示所有选项
+        renderDatabaseOptions(databaseList);
+        return;
+    }
+    
+    // 过滤匹配的选项
+    const filteredDatabases = databaseList.filter(db => 
+        db.toLowerCase().includes(searchText.toLowerCase())
+    );
+    
+    // 渲染过滤后的选项
+    renderDatabaseOptions(filteredDatabases);
+    
+    // 如果只有一个匹配项，高亮显示
+    if (filteredDatabases.length === 1) {
+        const option = dbDropdown.querySelector('.database-option');
+        if (option) {
+            option.classList.add('highlighted');
+        }
+    }
+}
+
+/**
+ * 处理数据库选择框的键盘导航
+ * @param {KeyboardEvent} event 键盘事件
+ */
+function handleDatabaseKeyboardNavigation(event) {
+    // 获取所有选项
+    const options = dbDropdown.querySelectorAll('.database-option');
+    
+    // 如果没有选项，不处理
+    if (options.length === 0) return;
+    
+    // 获取当前高亮的选项
+    let currentHighlighted = dbDropdown.querySelector('.database-option.highlighted');
+    let currentIndex = -1;
+    
+    if (currentHighlighted) {
+        // 找到当前高亮选项的索引
+        for (let i = 0; i < options.length; i++) {
+            if (options[i] === currentHighlighted) {
+                currentIndex = i;
+                break;
+            }
+        }
+    }
+    
+    // 根据按键处理导航
+    switch (event.key) {
+        case 'ArrowDown':
+            event.preventDefault();
+            // 向下导航，选择下一个选项
+            if (currentIndex < options.length - 1) {
+                if (currentHighlighted) currentHighlighted.classList.remove('highlighted');
+                options[currentIndex + 1].classList.add('highlighted');
+                options[currentIndex + 1].scrollIntoView({ block: 'nearest' });
+            }
+            break;
+            
+        case 'ArrowUp':
+            event.preventDefault();
+            // 向上导航，选择上一个选项
+            if (currentIndex > 0) {
+                if (currentHighlighted) currentHighlighted.classList.remove('highlighted');
+                options[currentIndex - 1].classList.add('highlighted');
+                options[currentIndex - 1].scrollIntoView({ block: 'nearest' });
+            }
+            break;
+            
+        case 'Enter':
+            event.preventDefault();
+            // 回车选择当前高亮选项
+            if (currentHighlighted) {
+                selectDatabase(currentHighlighted.getAttribute('data-value'));
+            } else if (options.length === 1) {
+                // 如果只有一个选项，自动选择
+                selectDatabase(options[0].getAttribute('data-value'));
+            }
+            break;
+            
+        case 'Escape':
+            // ESC键隐藏下拉列表
+            hideDatabaseDropdown();
+            break;
+    }
 }
