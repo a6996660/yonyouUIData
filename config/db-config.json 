@@ -13,10 +13,10 @@
       "password" : "eruij6g98_35"
     },
     "pre" : {
-      "host" : "localhost",
-      "port" : "3306",
-      "username" : "root",
-      "password" : ""
+      "host" : "dbproxy.diwork.com",
+      "port" : "12108",
+      "username" : "ro_db_all",
+      "password" : "MbRWs9QRjjKAGbERXFaJcE8k6eDhbRMf"
     }
   }
 }

@@ -3,7 +3,7 @@
  */
 
 // API基础URL
-const API_BASE_URL = 'http://127.0.0.1:8090/api/v1';
+const API_BASE_URL = 'http://127.0.0.1:9527/api/v1';
 
 /**
  * 获取方法调用关系图谱
