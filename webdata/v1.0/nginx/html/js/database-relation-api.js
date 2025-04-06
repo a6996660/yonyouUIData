@@ -405,7 +405,7 @@ window.transformToEChartsFormat = function(data) {
                 displayName = attrs.name || node.name || '工具栏';
                 break;
             case 'bill_toolbaritem':
-                displayName = attrs.name || node.name || '工具栏项';
+                displayName = `${attrs.name || node.name || ''} ${attrs.text || node.text || ''}`;
                 break;
             case 'bill_command':
                 displayName = attrs.name || node.name || '命令';

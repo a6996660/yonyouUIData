@@ -453,7 +453,7 @@ public class DbRelationServiceImpl implements DbRelationService {
         }
         
         if (billNo != null) {
-            String sql = "SELECT id, name, command FROM bill_toolbaritem WHERE billnumber = ? AND toolbar = ? AND tenant_id = ?";
+            String sql = "SELECT id, name, command,text FROM bill_toolbaritem WHERE billnumber = ? AND toolbar = ? AND tenant_id = ?";
             
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setString(1, billNo);
@@ -465,6 +465,7 @@ public class DbRelationServiceImpl implements DbRelationService {
                         DbTreeNode itemNode = new DbTreeNode("bill_toolbaritem", rs.getString("id"));
                         itemNode.setAttribute("name", rs.getString("name"));
                         itemNode.setAttribute("command", rs.getString("command"));
+                        itemNode.setAttribute("text", rs.getString("text"));
                         // 传递billNo属性
                         itemNode.setAttribute("cBillNo", billNo);
                         
