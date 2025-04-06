@@ -29,7 +29,8 @@ let databaseList = [];
 let dbConfigs = {
     test: { host: '', port: '', username: '', password: '' },
     daily: { host: '', port: '', username: '', password: '' },
-    pre: { host: '', port: '', username: '', password: '' }
+    pre: { host: '', port: '', username: '', password: '' },
+    other: { host: '', port: '', username: '', password: '' }
 };
 
 // 当前选中的节点数据
@@ -70,6 +71,24 @@ function initEventListeners() {
     dbEnvironmentSelect.addEventListener('change', function() {
         loadDatabaseList();
     });
+    
+    // 配置导入功能
+    const configImportFile = document.getElementById('config-import-file');
+    const importConfigButton = document.getElementById('import-config-button');
+    
+    if (configImportFile && importConfigButton) {
+        // 点击导入按钮时手动触发文件选择器
+        importConfigButton.addEventListener('click', function() {
+            configImportFile.click();
+        });
+        
+        // 文件选择后处理导入
+        configImportFile.addEventListener('change', function(event) {
+            if (event.target.files && event.target.files.length > 0) {
+                importConfigFromFile(event.target.files[0]);
+            }
+        });
+    }
     
     // 数据库搜索框获得焦点时显示下拉列表
     dbNameSearchInput.addEventListener('focus', function() {
@@ -931,7 +950,8 @@ async function loadDbConfigsFromServer() {
         dbConfigs = {
             test: configs.test || { host: '', port: '', username: '', password: '' },
             daily: configs.daily || { host: '', port: '', username: '', password: '' },
-            pre: configs.pre || { host: '', port: '', username: '', password: '' }
+            pre: configs.pre || { host: '', port: '', username: '', password: '' },
+            other: configs.other || { host: '', port: '', username: '', password: '' }
         };
         
         // 移除加载消息
@@ -943,7 +963,8 @@ async function loadDbConfigsFromServer() {
         dbConfigs = {
             test: { host: 'localhost', port: '3306', username: 'root', password: '' },
             daily: { host: 'localhost', port: '3306', username: 'root', password: '' },
-            pre: { host: 'localhost', port: '3306', username: 'root', password: '' }
+            pre: { host: 'localhost', port: '3306', username: 'root', password: '' },
+            other: { host: 'localhost', port: '3306', username: 'root', password: '' }
         };
         
         // 显示错误消息
@@ -989,6 +1010,12 @@ async function saveDbConfigsLocally() {
             port: document.getElementById('pre-port').value,
             username: document.getElementById('pre-username').value,
             password: document.getElementById('pre-password').value
+        },
+        other: {
+            host: document.getElementById('other-host').value,
+            port: document.getElementById('other-port').value,
+            username: document.getElementById('other-username').value,
+            password: document.getElementById('other-password').value
         }
     };
     
@@ -1020,6 +1047,12 @@ function populateConfigForm() {
     document.getElementById('pre-port').value = dbConfigs.pre.port || '';
     document.getElementById('pre-username').value = dbConfigs.pre.username || '';
     document.getElementById('pre-password').value = dbConfigs.pre.password || '';
+    
+    // 其他环境
+    document.getElementById('other-host').value = dbConfigs.other.host || '';
+    document.getElementById('other-port').value = dbConfigs.other.port || '';
+    document.getElementById('other-username').value = dbConfigs.other.username || '';
+    document.getElementById('other-password').value = dbConfigs.other.password || '';
 }
 
 /**
@@ -3217,5 +3250,82 @@ function handleDatabaseKeyboardNavigation(event) {
             // ESC键隐藏下拉列表
             hideDatabaseDropdown();
             break;
+    }
+}
+
+/**
+ * 从JSON文件导入配置
+ * 
+ * @param {File} file 选择的文件
+ */
+async function importConfigFromFile(file) {
+    try {
+        if (!file) {
+            console.error('未选择文件');
+            return;
+        }
+        
+        console.log('选择的文件:', file.name, '类型:', file.type);
+        
+        // 检查文件扩展名
+        if (!file.name.toLowerCase().endsWith('.json')) {
+            alert('请选择JSON格式的配置文件 (.json)');
+            return;
+        }
+        
+        // 读取文件内容
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            try {
+                const fileContent = e.target.result;
+                console.log('文件内容:', fileContent.substring(0, 100) + '...');
+                
+                // 解析JSON
+                const configData = JSON.parse(fileContent);
+                
+                // 验证配置格式
+                if (!configData.configs) {
+                    alert('无效的配置文件格式，请确保包含configs对象');
+                    return;
+                }
+                
+                // 更新配置
+                dbConfigs = {
+                    test: configData.configs.test || { host: '', port: '', username: '', password: '' },
+                    daily: configData.configs.daily || { host: '', port: '', username: '', password: '' },
+                    pre: configData.configs.pre || { host: '', port: '', username: '', password: '' },
+                    other: configData.configs.other || { host: '', port: '', username: '', password: '' }
+                };
+                
+                // 更新表单
+                populateConfigForm();
+                
+                // 显示成功消息
+                alert('配置已成功导入！');
+                
+                // 重置文件选择器
+                document.getElementById('config-import-file').value = '';
+            } catch (error) {
+                console.error('配置文件解析失败:', error);
+                alert(`配置文件解析失败: ${error.message}`);
+                document.getElementById('config-import-file').value = '';
+            }
+        };
+        
+        reader.onerror = function() {
+            console.error('文件读取错误');
+            alert('文件读取失败，请重试');
+            document.getElementById('config-import-file').value = '';
+        };
+        
+        // 以文本形式读取文件
+        reader.readAsText(file);
+    } catch (error) {
+        console.error('导入配置失败:', error);
+        alert(`导入配置失败: ${error.message}`);
+        if (document.getElementById('config-import-file')) {
+            document.getElementById('config-import-file').value = '';
+        }
     }
 }

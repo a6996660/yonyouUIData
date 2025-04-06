@@ -1296,6 +1296,7 @@
                         <option value="test">测试</option>
                         <option value="daily">日常</option>
                         <option value="pre">预发</option>
+                        <option value="other">其他</option>
                     </select>
                 </div>
                 
@@ -1523,6 +1524,7 @@
                     <div class="config-tab active" data-tab="test">测试环境</div>
                     <div class="config-tab" data-tab="daily">日常环境</div>
                     <div class="config-tab" data-tab="pre">预发环境</div>
+                    <div class="config-tab" data-tab="other">其他环境</div>
                 </div>
                 <div class="config-panels">
                     <div class="config-panel active" id="test-panel">
@@ -1585,8 +1587,32 @@
                             </div>
                         </div>
                     </div>
+                    <div class="config-panel" id="other-panel">
+                        <div class="config-form">
+                            <div class="input-group">
+                                <label>主机：</label>
+                                <input type="text" id="other-host" class="input-field" placeholder="例如: localhost">
+                            </div>
+                            <div class="input-group">
+                                <label>端口：</label>
+                                <input type="text" id="other-port" class="input-field" placeholder="例如: 3306">
+                            </div>
+                            <div class="input-group">
+                                <label>用户名：</label>
+                                <input type="text" id="other-username" class="input-field" placeholder="数据库用户名">
+                            </div>
+                            <div class="input-group">
+                                <label>密码：</label>
+                                <input type="password" id="other-password" class="input-field" placeholder="数据库密码">
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="flex justify-end mt-4">
+                <div class="flex justify-between mt-4">
+                    <div class="config-import">
+                        <button id="import-config-button" class="button bg-gray-600 hover:bg-gray-500">导入配置</button>
+                        <input type="file" id="config-import-file" accept=".json" style="display: none;">
+                    </div>
                     <button id="saveConfigButton" class="button">保存配置</button>
                 </div>
             </div>
