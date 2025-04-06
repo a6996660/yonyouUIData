@@ -3,7 +3,7 @@
  */
 
 // API基础URL
-const API_BASE_URL = 'http://127.0.0.1:8090/api/v1';
+const API_BASE_URL = 'http://127.0.0.1:9527/api/v1';
 
 /**
  * 获取API基础URL
@@ -511,6 +511,7 @@ window.generateMockData = function(billNo) {
                                             tableName: 'bill_toolbaritem',
                                             id: '11121',
                                             name: '工具栏项1',
+                                            text: '显示文本1',
                                             children: [
                                                 {
                                                     tableName: 'bill_command',
