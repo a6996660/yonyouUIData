@@ -39,26 +39,58 @@ if %errorlevel% equ 0 (
 echo Starting backend service...
 if exist dbtreeview-1.0.0.jar (
     start /b java -jar dbtreeview-1.0.0.jar
-    if errorlevel 1 (
-        echo Failed to start Java service. Please check if Java is installed and compatible.
-        pause
-        exit /b 1
-    )
+    echo Waiting for backend service to fully start...
+    timeout /t 5
 ) else (
     echo JAR file not found. Clone may have been incomplete.
     pause
     exit /b 1
 )
 
-echo Waiting for backend service to start...
-timeout /t 5
+echo Verifying backend service...
+netstat -ano | findstr ":9527" > nul
+if %errorlevel% neq 0 (
+    echo ERROR: Backend service is not running on port 9527.
+    pause
+    exit /b 1
+) else (
+    echo Backend service is running on port 9527.
+)
 
 echo Opening webpage...
 if exist "webdata\v1.0\nginx\html\database-relation.html" (
+    echo Found HTML file, opening in default browser...
     start "" "webdata\v1.0\nginx\html\database-relation.html"
 ) else (
-    echo Webpage file not found. Please check if the path is correct.
-    pause
+    echo Checking alternate locations...
+    if exist "webdata\v1.0\nginx\database-relation.html" (
+        start "" "webdata\v1.0\nginx\database-relation.html"
+    ) else if exist "database-relation.html" (
+        start "" "database-relation.html"
+    ) else (
+        echo HTML file not found. Searched in:
+        echo - webdata\v1.0\nginx\html\database-relation.html
+        echo - webdata\v1.0\nginx\database-relation.html
+        echo - database-relation.html
+        
+        echo Listing available directories:
+        if exist webdata (
+            echo Contents of webdata:
+            dir /b webdata
+            if exist webdata\v1.0 (
+                echo Contents of webdata\v1.0:
+                dir /b webdata\v1.0
+                if exist webdata\v1.0\nginx (
+                    echo Contents of webdata\v1.0\nginx:
+                    dir /b webdata\v1.0\nginx
+                    if exist webdata\v1.0\nginx\html (
+                        echo Contents of webdata\v1.0\nginx\html:
+                        dir /b webdata\v1.0\nginx\html
+                    )
+                )
+            )
+        )
+    )
 )
 
 echo Operation completed!
