@@ -285,6 +285,9 @@ async function performSearch() {
                 
                 // 确保节点搜索容器可见
                 setTimeout(ensureNodeSearchContainerVisible, 1000);
+                
+                // 确保控制浮窗可见
+                setTimeout(ensureTreeControlsVisible, 1000);
                 return;
             }
             
@@ -297,6 +300,9 @@ async function performSearch() {
             
             // 确保节点搜索容器可见
             setTimeout(ensureNodeSearchContainerVisible, 1000);
+            
+            // 确保控制浮窗可见
+            setTimeout(ensureTreeControlsVisible, 1000);
         } catch (error) {
             console.error('API调用失败:', error);
             loadingIndicator.style.display = 'none';
@@ -307,6 +313,9 @@ async function performSearch() {
             
             // 确保节点搜索容器可见
             setTimeout(ensureNodeSearchContainerVisible, 1000);
+            
+            // 确保控制浮窗可见
+            setTimeout(ensureTreeControlsVisible, 1000);
         }
     } catch (error) {
         console.error('搜索失败:', error);
@@ -315,6 +324,9 @@ async function performSearch() {
         
         // 即使失败也确保搜索容器可见
         setTimeout(ensureNodeSearchContainerVisible, 1000);
+        
+        // 即使失败也确保控制浮窗可见
+        setTimeout(ensureTreeControlsVisible, 1000);
     }
 }
 
@@ -328,15 +340,28 @@ function renderGraph(data) {
     
     if (!data) {
         console.error('没有数据可渲染');
-        graphContainer.innerHTML = '<div style="text-align:center;padding:20px;color:#e8eaed">无效的数据结构，无法渲染图表</div>';
+        // 创建错误信息元素而不是替换整个容器内容
+        clearAndShowError(graphContainer, '无效的数据结构，无法渲染图表');
         return;
     }
     
     // 检查ECharts是否可用
     if (typeof echarts === 'undefined') {
         console.error('ECharts库未加载，无法渲染图表');
-        graphContainer.innerHTML = '<div style="text-align:center;padding:20px;color:#e8eaed">图表库未正确加载，请刷新页面重试</div>';
+        // 创建错误信息元素而不是替换整个容器内容
+        clearAndShowError(graphContainer, '图表库未正确加载，请刷新页面重试');
         return;
+    }
+    
+    // 获取字体大小滑块设置的值并初始化全局变量
+    try {
+        const nodeFontSizeSlider = document.getElementById('node-font-size');
+        if (nodeFontSizeSlider) {
+            window.baseFontSize = parseInt(nodeFontSizeSlider.value);
+            console.log("初始化字体大小为:", window.baseFontSize);
+        }
+    } catch (error) {
+        console.warn("初始化字体大小失败:", error);
     }
     
     // 保存节点搜索容器元素的引用
@@ -380,6 +405,13 @@ function renderGraph(data) {
         
         // 预处理数据 - 对大量相同类型的子节点进行分组
         const processedData = shouldEnableAutoGrouping ? processTreeGrouping(data, true) : data;
+        
+        // 获取字体大小滑块设置的值
+        let fontSizeSlider = document.getElementById('node-font-size');
+        const nodeFontSize = fontSizeSlider ? parseInt(fontSizeSlider.value) : 13;
+        
+        // 保存字体大小为全局变量，供其他函数使用
+        window.baseFontSize = nodeFontSize;
         
         // 设置图表配置
         const option = {
@@ -454,7 +486,8 @@ function renderGraph(data) {
                         rotate: 0,
                         verticalAlign: 'middle',
                         align: 'left',
-                        fontSize: 12,
+                        fontSize: nodeFontSize, // 使用滑块设置的字体大小
+                        fontFamily: 'Microsoft YaHei, Arial, sans-serif', // 使用微软雅黑提高清晰度
                         color: '#e8eaed',
                         distance: 10, // 增加与节点的距离
                         formatter: function(params) {
@@ -476,7 +509,8 @@ function renderGraph(data) {
                             rotate: 0,
                             verticalAlign: 'middle',
                             align: 'left',
-                            fontSize: 11,
+                            fontSize: nodeFontSize - 1, // 叶子节点字体略小
+                            fontFamily: 'Microsoft YaHei, Arial, sans-serif', // 使用微软雅黑提高清晰度
                             color: '#d0d0d0',
                             distance: 10, // 增加与节点的距离
                             formatter: function(params) {
@@ -515,6 +549,123 @@ function renderGraph(data) {
         // 设置图表
         myChart.setOption(option);
         console.log('图表设置完成');
+        
+        // 公共函数：更新字体大小和距离
+        function updateFontSizeAndDistance(zoomFactor) {
+            // 调用全局的updateNodeLabelSize函数
+            window.updateNodeLabelSize();
+        }
+        
+        // 直接监听鼠标滚轮事件以捕获缩放操作
+        myChart.getZr().on('mousewheel', function() {
+            setTimeout(function() {
+                window.updateNodeLabelSize();
+            }, 50);
+        });
+        
+        // 监听所有可能的缩放相关事件
+        myChart.on('restore', window.updateNodeLabelSize);
+        myChart.on('dataZoom', window.updateNodeLabelSize);
+        myChart.on('geoRoam', window.updateNodeLabelSize);
+        myChart.on('graphRoam', window.updateNodeLabelSize);
+        myChart.on('brush', window.updateNodeLabelSize);
+        
+        // 监听工具栏的缩放按钮事件
+        myChart.on('magictypechanged', window.updateNodeLabelSize);
+        myChart.on('datarangeselected', window.updateNodeLabelSize);
+        
+        // 监听字体大小滑块的变化
+        fontSizeSlider = document.getElementById('node-font-size');
+        if (fontSizeSlider) {
+            fontSizeSlider.addEventListener('input', function() {
+                // 更新全局字体大小变量
+                window.baseFontSize = parseInt(this.value);
+                // 更新图表中的字体大小
+                window.updateNodeLabelSize();
+            });
+        }
+        
+        // 全局通用的更新节点标签大小函数
+        window.updateNodeLabelSize = function() {
+            console.log("全局updateNodeLabelSize被调用");
+            // 如果图表未初始化，直接返回
+            if (!myChart) {
+                console.warn("图表尚未初始化，无法更新节点标签大小");
+                return;
+            }
+            
+            // 通过图表容器元素的变换矩阵获取当前缩放级别
+            const transform = myChart.getZr().painter.getViewportRoot().transform;
+            if (!transform || !transform[0]) {
+                console.warn("无法获取图表变换矩阵，可能图表未完全初始化");
+                return;
+            }
+            
+            // 获取缩放因子
+            const zoomFactor = transform[0];
+            // 使用指数函数增强缩放效果 (zoomFactor^0.4 * 2.5)
+            // 这样会使小的缩放也有明显的变化，并且随着缩放的增加效果越来越明显
+            const scaleFactor = Math.max(Math.pow(zoomFactor, 0.4) * 2.5, 1);
+            
+            // 基础值 - 从全局变量获取或使用默认值
+            const baseFontSize = window.baseFontSize || 13; // 使用通过滑块设置的字体大小
+            const baseNodeSize = 10;
+            
+            console.log("检测到缩放操作，zoomFactor=", zoomFactor, "调整后的scaleFactor=", scaleFactor, "基础字体大小=", baseFontSize);
+            
+            // 构建新的图表配置
+            const newOption = {
+                series: [{
+                    symbolSize: Math.max(baseNodeSize * Math.sqrt(scaleFactor), baseNodeSize),
+                    label: {
+                        fontSize: Math.max(baseFontSize * scaleFactor, baseFontSize),
+                        fontWeight: zoomFactor > 1.2 ? 'bold' : 'normal',
+                        fontFamily: 'Microsoft YaHei, Arial, sans-serif',
+                        distance: Math.max(10 * Math.sqrt(zoomFactor), 10),
+                        // 根据缩放添加阴影效果，增强文字可见性
+                        textShadowColor: zoomFactor > 1.2 ? 'rgba(0, 0, 0, 0.4)' : 'transparent',
+                        textShadowBlur: zoomFactor > 1.2 ? 3 : 0,
+                        // 调整文字颜色，缩放时更亮
+                        color: zoomFactor > 1.5 ? '#ffffff' : '#e8eaed',
+                        // 增加文字背景，提高可读性
+                        backgroundColor: zoomFactor > 1.8 ? 'rgba(0, 0, 0, 0.2)' : 'transparent',
+                        padding: zoomFactor > 1.8 ? [2, 4, 2, 4] : [0, 0, 0, 0],
+                        borderRadius: 3
+                    },
+                    leaves: {
+                        label: {
+                            fontSize: Math.max((baseFontSize - 1) * scaleFactor, baseFontSize - 1),
+                            fontWeight: zoomFactor > 1.2 ? 'bold' : 'normal',
+                            fontFamily: 'Microsoft YaHei, Arial, sans-serif',
+                            distance: Math.max(10 * Math.sqrt(zoomFactor), 10),
+                            // 根据缩放添加阴影效果，增强文字可见性
+                            textShadowColor: zoomFactor > 1.2 ? 'rgba(0, 0, 0, 0.4)' : 'transparent',
+                            textShadowBlur: zoomFactor > 1.2 ? 3 : 0,
+                            // 调整文字颜色，缩放时更亮
+                            color: zoomFactor > 1.5 ? '#f0f0f0' : '#d0d0d0'
+                        }
+                    },
+                    // 增强节点样式
+                    itemStyle: {
+                        borderWidth: zoomFactor > 1.5 ? 2 : 1.2,
+                        shadowBlur: zoomFactor > 1.2 ? 6 : 0,
+                        shadowColor: 'rgba(30, 144, 255, 0.5)'
+                    },
+                    // 增强连线样式
+                    lineStyle: {
+                        width: zoomFactor > 1.5 ? 1.8 : (zoomFactor > 1.2 ? 1.5 : 1.2),
+                        shadowBlur: zoomFactor > 1.5 ? 3 : 0,
+                        shadowColor: 'rgba(30, 144, 255, 0.3)'
+                    }
+                }]
+            };
+            
+            console.log("应用新的图表选项:", newOption);
+            
+            // 应用新配置
+            myChart.setOption(newOption);
+            console.log("已应用字体大小更新");
+        };
         
         // 绑定图表点击事件
         myChart.on('click', async function(params) {
@@ -626,6 +777,9 @@ function renderGraph(data) {
                 
                 // 确保节点搜索容器可见
                 ensureNodeSearchContainerVisible();
+                
+                // 确保控制浮窗可见
+                ensureTreeControlsVisible();
             } else {
                 console.error('图表可能未正确渲染，未找到canvas元素');
             }
@@ -633,13 +787,56 @@ function renderGraph(data) {
         
     } catch (error) {
         console.error('渲染图表失败:', error);
-        graphContainer.innerHTML = `<div style="text-align:center;padding:20px;color:#e8eaed">图表渲染失败: ${error.message}</div>`;
+        // 创建错误信息元素而不是替换整个容器内容
+        clearAndShowError(graphContainer, `图表渲染失败: ${error.message}`);
         
-        // 即使渲染失败，也尝试恢复节点搜索容器
+        // 即使渲染失败，也尝试恢复节点搜索容器和控制浮窗
         setTimeout(() => {
             ensureNodeSearchContainerVisible();
+            ensureTreeControlsVisible();
         }, 100);
     }
+}
+
+/**
+ * 在保留控制元素的同时清除图表容器并显示错误消息
+ */
+function clearAndShowError(container, errorMessage) {
+    // 保留控制浮窗和节点搜索容器
+    const treeControls = document.getElementById('tree-controls');
+    const nodeSearchContainer = document.getElementById('nodeSearchContainer');
+    
+    // 临时存储元素
+    const elementsToKeep = [];
+    if (treeControls) elementsToKeep.push(treeControls);
+    if (nodeSearchContainer) elementsToKeep.push(nodeSearchContainer);
+    
+    // 临时移除元素
+    elementsToKeep.forEach(el => {
+        if (el.parentNode === container) {
+            container.removeChild(el);
+        }
+    });
+    
+    // 清除容器内容
+    container.innerHTML = '';
+    
+    // 创建错误信息元素
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = 'text-align:center;padding:20px;color:#e8eaed';
+    errorDiv.textContent = errorMessage;
+    
+    // 添加错误信息
+    container.appendChild(errorDiv);
+    
+    // 重新添加保存的元素
+    elementsToKeep.forEach(el => container.appendChild(el));
+    
+    // 确保控制浮窗和搜索容器可见
+    setTimeout(() => {
+        ensureNodeSearchContainerVisible();
+        ensureTreeControlsVisible();
+    }, 100);
 }
 
 /**
@@ -1511,6 +1708,7 @@ function applyCustomLayout() {
     const nodeSpacing = parseInt(document.getElementById('node-spacing').value);
     const layerSpacing = parseInt(document.getElementById('layer-spacing').value);
     const expandAll = document.getElementById('expand-all-nodes').checked;
+    const nodeFontSize = parseInt(document.getElementById('node-font-size').value);
     
     try {
         // 重新处理数据
@@ -1525,14 +1723,31 @@ function applyCustomLayout() {
         option.series[0].layerPadding = layerSpacing;
         option.series[0].initialTreeDepth = expandAll ? -1 : 2;
         
+        // 应用字体大小设置
+        window.baseFontSize = nodeFontSize; // 保存为全局变量，供updateNodeLabelSize使用
+        
+        option.series[0].label = {
+            ...option.series[0].label,
+            fontSize: nodeFontSize
+        };
+        
+        option.series[0].leaves.label = {
+            ...option.series[0].leaves.label,
+            fontSize: nodeFontSize - 1
+        };
+        
         // 应用更新
         myChart.setOption(option);
+        
+        // 立即更新字体大小
+        window.updateNodeLabelSize();
         
         console.log('自定义布局已应用', {
             enableGrouping,
             nodeSpacing,
             layerSpacing,
-            expandAll
+            expandAll,
+            nodeFontSize
         });
     } catch (error) {
         console.error('应用自定义布局失败:', error);
@@ -3328,4 +3543,158 @@ async function importConfigFromFile(file) {
             document.getElementById('config-import-file').value = '';
         }
     }
+}
+
+/**
+ * 确保树形图控制浮窗可见
+ */
+function ensureTreeControlsVisible() {
+    const treeControls = document.getElementById('tree-controls');
+    const graphContainer = document.getElementById('graph-container');
+    
+    // 如果控制浮窗不存在，则创建它
+    if (!treeControls) {
+        console.warn('树形图控制浮窗未找到，正在创建');
+        createTreeControls();
+        return;
+    }
+    
+    // 确保控制浮窗在图表容器内且可见
+    if (!graphContainer.contains(treeControls)) {
+        console.log('控制浮窗不在图表内，重新添加');
+        graphContainer.appendChild(treeControls);
+    }
+    treeControls.style.display = 'block';
+    console.log('已确保控制浮窗可见');
+}
+
+/**
+ * 创建树形图控制浮窗
+ */
+function createTreeControls() {
+    const graphContainer = document.getElementById('graph-container');
+    if (!graphContainer) return;
+    
+    // 创建控制浮窗元素
+    const treeControls = document.createElement('div');
+    treeControls.id = 'tree-controls';
+    treeControls.style.cssText = 'position: absolute; top: 70px; left: 20px; z-index: 100; background-color: rgba(48, 49, 52, 0.9); padding: 8px 12px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); border: 1px solid #5f6368;';
+    
+    // 获取当前滑块值
+    const fontSizeValue = window.baseFontSize || 13;
+    const spacingValue = 60;
+    const layerValue = 180;
+    
+    // 设置HTML内容
+    treeControls.innerHTML = `
+        <div style="margin-bottom: 10px; font-weight: 600; display: flex; align-items: center;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                <path d="M21 7v6h-6"></path>
+                <path d="M3 17v-6h6"></path>
+                <path d="M7 7l10 10"></path>
+                <path d="M17 7l-3.5 3.5"></path>
+                <path d="M7 17l3.5-3.5"></path>
+            </svg>
+            显示控制
+        </div>
+        <div style="margin-bottom: 8px;">
+            <label>
+                <input type="checkbox" id="enable-auto-grouping" checked> 自动分组节点
+            </label>
+        </div>
+        <div style="margin-bottom: 8px;">
+            <label>
+                <input type="checkbox" id="expand-all-nodes" checked> 展开所有节点
+            </label>
+        </div>
+        <div style="margin-bottom: 10px;">
+            <label for="node-spacing" style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span>节点间距:</span>
+                <span style="font-weight: 500; color: var(--accent-color);" id="node-spacing-value">${spacingValue}</span>
+            </label>
+            <input type="range" id="node-spacing" min="20" max="100" value="${spacingValue}" style="width: 100%;">
+        </div>
+        <div style="margin-bottom: 12px;">
+            <label for="layer-spacing" style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span>层级间距:</span>
+                <span style="font-weight: 500; color: var(--accent-color);" id="layer-spacing-value">${layerValue}</span>
+            </label>
+            <input type="range" id="layer-spacing" min="120" max="300" value="${layerValue}" style="width: 100%;">
+        </div>
+        <div style="margin-bottom: 12px;">
+            <label for="node-font-size" style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span>节点字体大小:</span>
+                <span style="font-weight: 500; color: var(--accent-color);" id="node-font-size-value">${fontSizeValue}</span>
+            </label>
+            <input type="range" id="node-font-size" min="10" max="20" value="${fontSizeValue}" style="width: 100%;">
+        </div>
+        <div>
+            <button id="apply-layout" class="button" style="width: 100%; background-color: var(--accent-color); color: white; font-weight: 500; font-size: 13px; height: 32px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                    <polyline points="17 1 21 5 17 9"></polyline>
+                    <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                    <polyline points="7 23 3 19 7 15"></polyline>
+                    <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                </svg>
+                应用布局
+            </button>
+        </div>
+    `;
+    
+    // 添加到图表容器
+    graphContainer.appendChild(treeControls);
+    
+    // 重新绑定事件
+    const applyLayoutButton = document.getElementById('apply-layout');
+    const nodeSpacingCtrl = document.getElementById('node-spacing');
+    const nodeSpacingValueEl = document.getElementById('node-spacing-value');
+    const layerSpacingCtrl = document.getElementById('layer-spacing');
+    const layerSpacingValueEl = document.getElementById('layer-spacing-value');
+    const nodeFontSizeCtrl = document.getElementById('node-font-size');
+    const nodeFontSizeValueEl = document.getElementById('node-font-size-value');
+    const expandAllNodesCtrl = document.getElementById('expand-all-nodes');
+    
+    // 应用布局按钮点击事件
+    if (applyLayoutButton) {
+        applyLayoutButton.addEventListener('click', function() {
+            applyCustomLayout();
+        });
+    }
+    
+    // 滑块值实时更新
+    if (nodeSpacingCtrl && nodeSpacingValueEl) {
+        nodeSpacingCtrl.addEventListener('input', function() {
+            nodeSpacingValueEl.textContent = this.value;
+        });
+    }
+    
+    if (layerSpacingCtrl && layerSpacingValueEl) {
+        layerSpacingCtrl.addEventListener('input', function() {
+            layerSpacingValueEl.textContent = this.value;
+        });
+    }
+    
+    if (nodeFontSizeCtrl && nodeFontSizeValueEl) {
+        nodeFontSizeCtrl.addEventListener('input', function() {
+            nodeFontSizeValueEl.textContent = this.value;
+            // 更新全局字体大小变量
+            window.baseFontSize = parseInt(this.value);
+            // 更新图表中的字体大小
+            window.updateNodeLabelSize();
+        });
+    }
+    
+    // 展开所有节点选项变化事件
+    if (expandAllNodesCtrl && myChart) {
+        expandAllNodesCtrl.addEventListener('change', function() {
+            if (myChart) {
+                const option = myChart.getOption();
+                option.series[0].initialTreeDepth = this.checked ? -1 : 2;
+                myChart.setOption(option);
+            }
+        });
+    }
+    
+    console.log('已创建树形图控制浮窗');
+    return treeControls;
 }

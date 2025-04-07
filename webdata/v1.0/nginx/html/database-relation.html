@@ -286,8 +286,13 @@
         #tree-controls {
             position: absolute; 
             top: 70px; 
-            right: 20px; 
+            left: 20px; 
             z-index: 100;
+            background-color: rgba(48, 49, 52, 0.9);
+            padding: 8px 12px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            border: 1px solid #5f6368;
         }
         
         #tree-controls:hover {
@@ -1366,7 +1371,7 @@
             </div>
             
             <!-- 树形图显示控制 -->
-            <div id="tree-controls" style="position: absolute; top: 70px; right: 20px; z-index: 100;">
+            <div id="tree-controls" style="position: absolute; top: 70px; left: 20px; z-index: 100; background-color: rgba(48, 49, 52, 0.9); padding: 8px 12px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); border: 1px solid #5f6368;">
                 <div style="margin-bottom: 10px; font-weight: 600; display: flex; align-items: center;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
                         <path d="M21 7v6h-6"></path>
@@ -1400,6 +1405,13 @@
                         <span style="font-weight: 500; color: var(--accent-color);" id="layer-spacing-value">180</span>
                     </label>
                     <input type="range" id="layer-spacing" min="120" max="300" value="180" style="width: 100%;">
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label for="node-font-size" style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span>节点字体大小:</span>
+                        <span style="font-weight: 500; color: var(--accent-color);" id="node-font-size-value">13</span>
+                    </label>
+                    <input type="range" id="node-font-size" min="10" max="20" value="13" style="width: 100%;">
                 </div>
                 <div>
                     <button id="apply-layout" class="button" style="width: 100%; background-color: var(--accent-color); color: white; font-weight: 500; font-size: 13px; height: 32px;">
@@ -1627,6 +1639,8 @@
             const nodeSpacingValue = document.getElementById('node-spacing-value');
             const layerSpacing = document.getElementById('layer-spacing');
             const layerSpacingValue = document.getElementById('layer-spacing-value');
+            const nodeFontSize = document.getElementById('node-font-size');
+            const nodeFontSizeValue = document.getElementById('node-font-size-value');
             
             // 实时更新滑块值显示
             if (nodeSpacing && nodeSpacingValue) {
@@ -1638,6 +1652,12 @@
             if (layerSpacing && layerSpacingValue) {
                 layerSpacing.addEventListener('input', function() {
                     layerSpacingValue.textContent = this.value;
+                });
+            }
+            
+            if (nodeFontSize && nodeFontSizeValue) {
+                nodeFontSize.addEventListener('input', function() {
+                    nodeFontSizeValue.textContent = this.value;
                 });
             }
             
