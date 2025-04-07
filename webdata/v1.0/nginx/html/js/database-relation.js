@@ -530,12 +530,11 @@ function renderGraph(data) {
                     itemStyle: {
                         borderWidth: 1.2 // 增加边框宽度
                     },
-                    // 使用基于树结构分析的布局参数
-                    nodeGap: treeMetrics.recommendedNodeGap,
-                    layerPadding: treeMetrics.recommendedLayerPadding,
-                    // 大量节点时启用力导向布局辅助
+                    // 配置布局参数 - 与applyCustomLayout保持一致的配置方法
                     force: {
-                        repulsion: treeMetrics.nodeCount > 150 ? 80 : 40, // 增加节点间斥力
+                        repulsion: treeMetrics.recommendedLayerPadding * 0.5, // 斥力与层级间距成正比
+                        edgeLength: treeMetrics.recommendedNodeGap * 2, // 边长与节点间距成正比
+                        gravity: 0.1,
                         layoutAnimation: treeMetrics.nodeCount <= 250 // 节点太多时禁用布局动画
                     },
                     // 始终展示到所有末级节点
@@ -1709,35 +1708,107 @@ function applyCustomLayout() {
     const layerSpacing = parseInt(document.getElementById('layer-spacing').value);
     const expandAll = document.getElementById('expand-all-nodes').checked;
     const nodeFontSize = parseInt(document.getElementById('node-font-size').value);
+    const leafSpacing = parseInt(document.getElementById('leaf-spacing').value || '30'); // 叶子节点间距值
+    
+    console.log('应用布局: 节点间距=', nodeSpacing, '层级间距=', layerSpacing, '叶子节点间距=', leafSpacing);
     
     try {
         // 重新处理数据
-        const processedData = enableGrouping 
+        let processedData = enableGrouping 
             ? processTreeGrouping(window.originalTreeData, true) 
-            : window.originalTreeData;
+            : JSON.parse(JSON.stringify(window.originalTreeData));
+        
+        // 处理数据，修改叶子节点间距 - 使用叶子节点间距调整同一父节点下的叶子节点布局
+        // 我们在数据层面上通过修改节点结构来实现上下间距调整
+        processedData = processNodeSpacing(processedData, leafSpacing);
         
         // 更新配置
         const option = myChart.getOption();
         option.series[0].data = [processedData];
-        option.series[0].nodeGap = nodeSpacing;
-        option.series[0].layerPadding = layerSpacing;
+        
+        // 设置展开/折叠状态
         option.series[0].initialTreeDepth = expandAll ? -1 : 2;
+        
+        // 调整节点间距 - 通过多种方法协同工作以确保效果
+        
+        // 1. 通过调整整体布局范围影响水平和垂直间距
+        // 根据nodeSpacing计算图表占用空间的百分比
+        const spacePercentage = Math.max(5, Math.min(40, 60 - nodeSpacing * 0.4));
+        option.series[0].top = '8%';
+        option.series[0].bottom = '8%'; 
+        option.series[0].left = '5%';
+        option.series[0].right = spacePercentage + '%';
+        
+        // 2. 使用树图的线条曲率调整，影响节点的视觉间距
+        const curveness = nodeSpacing < 50 ? 0.3 : (nodeSpacing > 80 ? 0.7 : 0.5);
+        option.series[0].lineStyle = {
+            color: '#5f6368',
+            width: 1.2,
+            curveness: curveness
+        };
+        
+        // 3. 调整层级间距 - 使用力导向图参数
+        option.series[0].force = {
+            repulsion: layerSpacing * 0.5, // 斥力与层级间距成正比
+            edgeLength: layerSpacing * 0.4, // 边长与层级间距成正比
+            gravity: 0.1,
+            layoutAnimation: true
+        };
+        
+        // 4. 添加自定义布局处理器，应用叶子节点的layoutOffset属性
+        option.series[0].layoutPosition = function(params) {
+            const node = params.node;
+            const layout = params.layout;
+            
+            // 如果节点有自定义偏移，应用它
+            if (node.layoutOffset) {
+                layout.x += node.layoutOffset.x || 0;
+                layout.y += node.layoutOffset.y || 0;
+            }
+            
+            return layout;
+        };
+        
+        // 5. 标签设置
+        const labelDistance = 10 + (nodeSpacing - 60) * 0.1; // 基础距离10，根据节点间距调整
+        
+        // 非叶子节点标签设置
+        option.series[0].label = {
+            position: 'right',
+            rotate: 0,
+            verticalAlign: 'middle',
+            align: 'left',
+            fontSize: nodeFontSize,
+            fontFamily: 'Microsoft YaHei, Arial, sans-serif',
+            color: '#e8eaed',
+            distance: labelDistance
+        };
+        
+        // 叶子节点标签设置
+        option.series[0].leaves = {
+            itemStyle: {
+                borderWidth: 1.2,
+                borderColor: '#8ab4f8'
+            },
+            label: {
+                position: 'right',
+                rotate: 0,
+                verticalAlign: 'middle',
+                align: 'left',
+                fontSize: nodeFontSize - 1,
+                fontFamily: 'Microsoft YaHei, Arial, sans-serif',
+                color: '#d0d0d0',
+                distance: labelDistance
+            }
+        };
         
         // 应用字体大小设置
         window.baseFontSize = nodeFontSize; // 保存为全局变量，供updateNodeLabelSize使用
         
-        option.series[0].label = {
-            ...option.series[0].label,
-            fontSize: nodeFontSize
-        };
-        
-        option.series[0].leaves.label = {
-            ...option.series[0].leaves.label,
-            fontSize: nodeFontSize - 1
-        };
-        
         // 应用更新
-        myChart.setOption(option);
+        myChart.setOption(option, {
+            replaceMerge: ['series']
+        });
         
         // 立即更新字体大小
         window.updateNodeLabelSize();
@@ -1746,12 +1817,76 @@ function applyCustomLayout() {
             enableGrouping,
             nodeSpacing,
             layerSpacing,
+            leafSpacing,
             expandAll,
-            nodeFontSize
+            nodeFontSize,
+            spacePercentage,
+            curveness,
+            labelDistance
         });
     } catch (error) {
         console.error('应用自定义布局失败:', error);
     }
+}
+
+// 辅助函数：处理节点间距，特别是同一父节点下叶子节点的垂直间距
+function processNodeSpacing(data, spacing) {
+    // 递归处理节点
+    function processNode(node) {
+        if (!node) return null;
+        
+        // 如果节点有子节点，则处理子节点间的间距
+        if (node.children && node.children.length > 0) {
+            // 找出叶子节点
+            const leafNodes = node.children.filter(child => !child.children || child.children.length === 0);
+            
+            // 如果有多个叶子节点，修改它们的布局属性
+            if (leafNodes.length > 1 && spacing > 30) {
+                // 计算间距因子，从基准30开始，每增加10单位增加20%的间距
+                const spacingFactor = 1 + Math.max(0, (spacing - 30) / 10) * 0.2;
+                
+                // 对所有叶子节点应用特殊样式和定位属性
+                leafNodes.forEach((leaf, index) => {
+                    // 为叶子节点添加布局信息
+                    if (!leaf.itemStyle) leaf.itemStyle = {};
+                    
+                    // 计算垂直偏移 - 对于从左到右的布局，这控制的是上下位置
+                    // 偶数索引的节点向上偏移，奇数索引的节点向下偏移
+                    const verticalOffset = index % 2 === 0 
+                        ? -1 * (spacing - 30) * 0.2 * (Math.floor(index / 2) + 1)  // 向上偏移
+                        : (spacing - 30) * 0.2 * (Math.floor(index / 2) + 1);      // 向下偏移
+                    
+                    // 添加布局控制属性
+                    leaf.layoutOffset = {
+                        x: 0,                    // 水平方向不偏移
+                        y: verticalOffset         // 垂直方向根据间距值和索引计算偏移
+                    };
+                    
+                    // 为有布局偏移的节点添加特殊样式
+                    if (Math.abs(verticalOffset) > 0) {
+                        leaf.emphasis = {
+                            itemStyle: {
+                                shadowBlur: 5,
+                                shadowColor: 'rgba(0,0,0,0.3)'
+                            }
+                        };
+                        
+                        // 调整连线样式，强调分布
+                        if (!leaf.lineStyle) leaf.lineStyle = {};
+                        leaf.lineStyle.curveness = 0.3 + (spacing - 30) * 0.01; // 增加曲度
+                    }
+                });
+            }
+            
+            // 递归处理所有子节点
+            node.children = node.children.map(child => processNode(child)).filter(Boolean);
+        }
+        
+        return node;
+    }
+    
+    // 处理根节点
+    return processNode(data);
 }
 
 /**
@@ -3578,25 +3713,21 @@ function createTreeControls() {
     // 创建控制浮窗元素
     const treeControls = document.createElement('div');
     treeControls.id = 'tree-controls';
-    treeControls.style.cssText = 'position: absolute; top: 70px; left: 20px; z-index: 100; background-color: rgba(48, 49, 52, 0.9); padding: 8px 12px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); border: 1px solid #5f6368;';
+    // 修改控制窗口位置为左上角，同时添加transition属性用于平滑切换
+    treeControls.style.cssText = 'position: absolute; top: 10px; left: 10px; z-index: 100; background-color: rgba(48, 49, 52, 0.9); padding: 8px 12px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); border: 1px solid #5f6368; transition: height 0.3s, opacity 0.3s;';
     
     // 获取当前滑块值
     const fontSizeValue = window.baseFontSize || 13;
     const spacingValue = 60;
     const layerValue = 180;
+    const leafSpacingValue = 30; // 新增：叶子节点间距默认值
     
-    // 设置HTML内容
-    treeControls.innerHTML = `
-        <div style="margin-bottom: 10px; font-weight: 600; display: flex; align-items: center;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
-                <path d="M21 7v6h-6"></path>
-                <path d="M3 17v-6h6"></path>
-                <path d="M7 7l10 10"></path>
-                <path d="M17 7l-3.5 3.5"></path>
-                <path d="M7 17l3.5-3.5"></path>
-            </svg>
-            显示控制
-        </div>
+    // 创建控制窗口内容元素
+    const controlsContent = document.createElement('div');
+    controlsContent.id = 'tree-controls-content';
+    
+    // 设置控制窗口内容的HTML
+    controlsContent.innerHTML = `
         <div style="margin-bottom: 8px;">
             <label>
                 <input type="checkbox" id="enable-auto-grouping" checked> 自动分组节点
@@ -3612,14 +3743,21 @@ function createTreeControls() {
                 <span>节点间距:</span>
                 <span style="font-weight: 500; color: var(--accent-color);" id="node-spacing-value">${spacingValue}</span>
             </label>
-            <input type="range" id="node-spacing" min="20" max="100" value="${spacingValue}" style="width: 100%;">
+            <input type="range" id="node-spacing" min="20" max="200" value="${spacingValue}" style="width: 100%;">
+        </div>
+        <div style="margin-bottom: 12px;">
+            <label for="leaf-spacing" style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span>叶子节点间距:</span>
+                <span style="font-weight: 500; color: var(--accent-color);" id="leaf-spacing-value">${leafSpacingValue}</span>
+            </label>
+            <input type="range" id="leaf-spacing" min="10" max="200" value="${leafSpacingValue}" style="width: 100%;">
         </div>
         <div style="margin-bottom: 12px;">
             <label for="layer-spacing" style="display: flex; justify-content: space-between; margin-bottom: 4px;">
                 <span>层级间距:</span>
                 <span style="font-weight: 500; color: var(--accent-color);" id="layer-spacing-value">${layerValue}</span>
             </label>
-            <input type="range" id="layer-spacing" min="120" max="300" value="${layerValue}" style="width: 100%;">
+            <input type="range" id="layer-spacing" min="120" max="500" value="${layerValue}" style="width: 100%;">
         </div>
         <div style="margin-bottom: 12px;">
             <label for="node-font-size" style="display: flex; justify-content: space-between; margin-bottom: 4px;">
@@ -3641,6 +3779,42 @@ function createTreeControls() {
         </div>
     `;
     
+    // 创建标题栏元素，包含标题和最小化按钮
+    const titleBar = document.createElement('div');
+    titleBar.style.cssText = 'margin-bottom: 10px; font-weight: 600; display: flex; align-items: center; justify-content: space-between;';
+    
+    // 设置标题栏内容
+    titleBar.innerHTML = `
+        <div style="display: flex; align-items: center;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                <path d="M21 7v6h-6"></path>
+                <path d="M3 17v-6h6"></path>
+                <path d="M7 7l10 10"></path>
+                <path d="M17 7l-3.5 3.5"></path>
+                <path d="M7 17l3.5-3.5"></path>
+            </svg>
+            显示控制
+        </div>
+        <button id="toggle-controls" style="background: none; border: none; color: #e8eaed; cursor: pointer; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center;">
+            <svg id="minimize-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="4 14 10 14 10 20"></polyline>
+                <polyline points="20 10 14 10 14 4"></polyline>
+                <line x1="14" y1="10" x2="21" y2="3"></line>
+                <line x1="3" y1="21" x2="10" y2="14"></line>
+            </svg>
+            <svg id="expand-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <polyline points="9 21 3 21 3 15"></polyline>
+                <line x1="21" y1="3" x2="14" y2="10"></line>
+                <line x1="3" y1="21" x2="10" y2="14"></line>
+            </svg>
+        </button>
+    `;
+    
+    // 组装控制窗口
+    treeControls.appendChild(titleBar);
+    treeControls.appendChild(controlsContent);
+    
     // 添加到图表容器
     graphContainer.appendChild(treeControls);
     
@@ -3648,11 +3822,37 @@ function createTreeControls() {
     const applyLayoutButton = document.getElementById('apply-layout');
     const nodeSpacingCtrl = document.getElementById('node-spacing');
     const nodeSpacingValueEl = document.getElementById('node-spacing-value');
+    const leafSpacingCtrl = document.getElementById('leaf-spacing'); // 新增：叶子节点间距控制器
+    const leafSpacingValueEl = document.getElementById('leaf-spacing-value'); // 新增：叶子节点间距值显示
     const layerSpacingCtrl = document.getElementById('layer-spacing');
     const layerSpacingValueEl = document.getElementById('layer-spacing-value');
     const nodeFontSizeCtrl = document.getElementById('node-font-size');
     const nodeFontSizeValueEl = document.getElementById('node-font-size-value');
     const expandAllNodesCtrl = document.getElementById('expand-all-nodes');
+    const toggleControlsBtn = document.getElementById('toggle-controls');
+    const minimizeIcon = document.getElementById('minimize-icon');
+    const expandIcon = document.getElementById('expand-icon');
+    
+    // 控制窗口最小化/展开功能
+    let isMinimized = false;
+    if (toggleControlsBtn) {
+        toggleControlsBtn.addEventListener('click', function() {
+            const controlsContent = document.getElementById('tree-controls-content');
+            if (isMinimized) {
+                // 展开控制窗口
+                controlsContent.style.display = 'block';
+                minimizeIcon.style.display = 'block';
+                expandIcon.style.display = 'none';
+                isMinimized = false;
+            } else {
+                // 最小化控制窗口
+                controlsContent.style.display = 'none';
+                minimizeIcon.style.display = 'none';
+                expandIcon.style.display = 'block';
+                isMinimized = true;
+            }
+        });
+    }
     
     // 应用布局按钮点击事件
     if (applyLayoutButton) {
@@ -3665,6 +3865,13 @@ function createTreeControls() {
     if (nodeSpacingCtrl && nodeSpacingValueEl) {
         nodeSpacingCtrl.addEventListener('input', function() {
             nodeSpacingValueEl.textContent = this.value;
+        });
+    }
+    
+    // 新增：叶子节点间距滑块值实时更新
+    if (leafSpacingCtrl && leafSpacingValueEl) {
+        leafSpacingCtrl.addEventListener('input', function() {
+            leafSpacingValueEl.textContent = this.value;
         });
     }
     
@@ -3698,3 +3905,27 @@ function createTreeControls() {
     console.log('已创建树形图控制浮窗');
     return treeControls;
 }
+
+// 在文档加载完成后初始化控制窗口最小化/展开按钮
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleControlsBtn = document.getElementById('toggle-controls');
+    if (toggleControlsBtn) {
+        toggleControlsBtn.addEventListener('click', function() {
+            const controlsContent = document.getElementById('tree-controls-content');
+            const minimizeIcon = document.getElementById('minimize-icon');
+            const expandIcon = document.getElementById('expand-icon');
+            
+            if (controlsContent.style.display === 'none') {
+                // 展开控制窗口
+                controlsContent.style.display = 'block';
+                minimizeIcon.style.display = 'block';
+                expandIcon.style.display = 'none';
+            } else {
+                // 最小化控制窗口
+                controlsContent.style.display = 'none';
+                minimizeIcon.style.display = 'none';
+                expandIcon.style.display = 'block';
+            }
+        });
+    }
+});

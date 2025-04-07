@@ -1370,59 +1370,84 @@
                 </p>
             </div>
             
-            <!-- 树形图显示控制 -->
-            <div id="tree-controls" style="position: absolute; top: 70px; left: 20px; z-index: 100; background-color: rgba(48, 49, 52, 0.9); padding: 8px 12px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); border: 1px solid #5f6368;">
-                <div style="margin-bottom: 10px; font-weight: 600; display: flex; align-items: center;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
-                        <path d="M21 7v6h-6"></path>
-                        <path d="M3 17v-6h6"></path>
-                        <path d="M7 7l10 10"></path>
-                        <path d="M17 7l-3.5 3.5"></path>
-                        <path d="M7 17l3.5-3.5"></path>
-                    </svg>
-                    显示控制
-                </div>
-                <div style="margin-bottom: 8px;">
-                    <label>
-                        <input type="checkbox" id="enable-auto-grouping" checked> 自动分组节点
-                    </label>
-                </div>
-                <div style="margin-bottom: 8px;">
-                    <label>
-                        <input type="checkbox" id="expand-all-nodes" checked> 展开所有节点
-                    </label>
-                </div>
-                <div style="margin-bottom: 10px;">
-                    <label for="node-spacing" style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <span>节点间距:</span>
-                        <span style="font-weight: 500; color: var(--accent-color);" id="node-spacing-value">60</span>
-                    </label>
-                    <input type="range" id="node-spacing" min="20" max="100" value="60" style="width: 100%;">
-                </div>
-                <div style="margin-bottom: 12px;">
-                    <label for="layer-spacing" style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <span>层级间距:</span>
-                        <span style="font-weight: 500; color: var(--accent-color);" id="layer-spacing-value">180</span>
-                    </label>
-                    <input type="range" id="layer-spacing" min="120" max="300" value="180" style="width: 100%;">
-                </div>
-                <div style="margin-bottom: 12px;">
-                    <label for="node-font-size" style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <span>节点字体大小:</span>
-                        <span style="font-weight: 500; color: var(--accent-color);" id="node-font-size-value">13</span>
-                    </label>
-                    <input type="range" id="node-font-size" min="10" max="20" value="13" style="width: 100%;">
-                </div>
-                <div>
-                    <button id="apply-layout" class="button" style="width: 100%; background-color: var(--accent-color); color: white; font-weight: 500; font-size: 13px; height: 32px;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
-                            <polyline points="17 1 21 5 17 9"></polyline>
-                            <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
-                            <polyline points="7 23 3 19 7 15"></polyline>
-                            <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+            <!-- 树形图控制浮窗 -->
+            <div class="tree-controls" id="tree-controls" style="position: absolute; top: 10px; left: 10px; z-index: 100; background-color: rgba(48, 49, 52, 0.9); padding: 8px 12px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); border: 1px solid #5f6368; transition: height 0.3s, opacity 0.3s;">
+                <div style="margin-bottom: 10px; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                            <path d="M21 7v6h-6"></path>
+                            <path d="M3 17v-6h6"></path>
+                            <path d="M7 7l10 10"></path>
+                            <path d="M17 7l-3.5 3.5"></path>
+                            <path d="M7 17l3.5-3.5"></path>
                         </svg>
-                        应用布局
+                        显示控制
+                    </div>
+                    <button id="toggle-controls" style="background: none; border: none; color: #e8eaed; cursor: pointer; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center;">
+                        <svg id="minimize-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="4 14 10 14 10 20"></polyline>
+                            <polyline points="20 10 14 10 14 4"></polyline>
+                            <line x1="14" y1="10" x2="21" y2="3"></line>
+                            <line x1="3" y1="21" x2="10" y2="14"></line>
+                        </svg>
+                        <svg id="expand-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <polyline points="9 21 3 21 3 15"></polyline>
+                            <line x1="21" y1="3" x2="14" y2="10"></line>
+                            <line x1="3" y1="21" x2="10" y2="14"></line>
+                        </svg>
                     </button>
+                </div>
+                <div id="tree-controls-content">
+                    <div style="margin-bottom: 8px;">
+                        <label>
+                            <input type="checkbox" id="enable-auto-grouping" checked> 自动分组节点
+                        </label>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <label>
+                            <input type="checkbox" id="expand-all-nodes" checked> 展开所有节点
+                        </label>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label for="node-spacing" style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span>节点间距:</span>
+                            <span style="font-weight: 500; color: var(--accent-color);" id="node-spacing-value">60</span>
+                        </label>
+                        <input type="range" id="node-spacing" min="20" max="200" value="60" style="width: 100%;">
+                    </div>
+                    <div style="margin-bottom: 12px;">
+                        <label for="leaf-spacing" style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span>叶子节点间距:</span>
+                            <span style="font-weight: 500; color: var(--accent-color);" id="leaf-spacing-value">30</span>
+                        </label>
+                        <input type="range" id="leaf-spacing" min="10" max="200" value="30" style="width: 100%;">
+                    </div>
+                    <div style="margin-bottom: 12px;">
+                        <label for="layer-spacing" style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span>层级间距:</span>
+                            <span style="font-weight: 500; color: var(--accent-color);" id="layer-spacing-value">180</span>
+                        </label>
+                        <input type="range" id="layer-spacing" min="120" max="500" value="180" style="width: 100%;">
+                    </div>
+                    <div style="margin-bottom: 12px;">
+                        <label for="node-font-size" style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span>节点字体大小:</span>
+                            <span style="font-weight: 500; color: var(--accent-color);" id="node-font-size-value">13</span>
+                        </label>
+                        <input type="range" id="node-font-size" min="10" max="20" value="13" style="width: 100%;">
+                    </div>
+                    <div>
+                        <button id="apply-layout" class="button" style="width: 100%; background-color: var(--accent-color); color: white; font-weight: 500; font-size: 13px; height: 32px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                                <polyline points="17 1 21 5 17 9"></polyline>
+                                <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                                <polyline points="7 23 3 19 7 15"></polyline>
+                                <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                            </svg>
+                            应用布局
+                        </button>
+                    </div>
                 </div>
             </div>
             
