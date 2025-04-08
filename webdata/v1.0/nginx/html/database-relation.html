@@ -2174,47 +2174,111 @@
                     
                     const originalValue = td.textContent.trim();
                     
-                    // 创建输入框
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.value = originalValue;
-                    input.className = 'input-field w-full';
-                    input.dataset.originalValue = originalValue;
-                    input.dataset.fieldName = fieldName;
+                    // 检查是否是布尔值字段
+                    const isBooleanField = originalValue === 'true' || originalValue === 'false';
                     
-                    // 添加输入框动画效果
-                    input.style.opacity = '0';
-                    input.style.transform = 'translateY(4px)';
-                    
-                    // 监听输入变化
-                    input.addEventListener('input', function() {
-                        if (this.value !== this.dataset.originalValue) {
-                            editedFields[fieldName] = this.value;
-                            // 添加视觉反馈
-                            this.style.borderColor = 'var(--accent-color)';
-                            this.style.backgroundColor = 'rgba(59, 130, 246, 0.05)';
-                        } else {
-                            delete editedFields[fieldName];
-                            // 恢复默认样式
-                            this.style.borderColor = '';
-                            this.style.backgroundColor = '';
-                        }
+                    if (isBooleanField) {
+                        // 为布尔值创建下拉选择框
+                        const select = document.createElement('select');
+                        select.className = 'input-field w-full';
+                        select.dataset.originalValue = originalValue;
+                        select.dataset.fieldName = fieldName;
                         
-                        // 如果有编辑的字段，显示操作按钮
-                        document.getElementById('nodeDetailActions').style.display = 
-                            Object.keys(editedFields).length > 0 ? 'flex' : 'none';
-                    });
-                    
-                    // 清空单元格并添加输入框
-                    td.textContent = '';
-                    td.appendChild(input);
-                    
-                    // 触发输入框动画效果
-                    setTimeout(() => {
-                        input.style.opacity = '1';
-                        input.style.transform = 'translateY(0)';
-                        input.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-                    }, 50 + index * 20); // 使用 index 替代 rows.indexOf(row)，创造级联效果
+                        // 创建选项
+                        const trueOption = document.createElement('option');
+                        trueOption.value = 'true';
+                        trueOption.textContent = '是 (true)';
+                        trueOption.selected = originalValue === 'true';
+                        
+                        const falseOption = document.createElement('option');
+                        falseOption.value = 'false';
+                        falseOption.textContent = '否 (false)';
+                        falseOption.selected = originalValue === 'false';
+                        
+                        select.appendChild(trueOption);
+                        select.appendChild(falseOption);
+                        
+                        // 设置下拉框样式
+                        select.style.backgroundColor = 'rgba(243, 244, 246, 0.5)';
+                        select.style.borderRadius = '3px';
+                        select.style.cursor = 'pointer';
+                        
+                        // 添加选择框动画效果
+                        select.style.opacity = '0';
+                        select.style.transform = 'translateY(4px)';
+                        
+                        // 监听选择变化
+                        select.addEventListener('change', function() {
+                            if (this.value !== this.dataset.originalValue) {
+                                editedFields[fieldName] = this.value;
+                                // 添加视觉反馈
+                                this.style.borderColor = 'var(--accent-color)';
+                                this.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+                            } else {
+                                delete editedFields[fieldName];
+                                // 恢复默认样式
+                                this.style.borderColor = '';
+                                this.style.backgroundColor = 'rgba(243, 244, 246, 0.5)';
+                            }
+                            
+                            // 如果有编辑的字段，显示操作按钮
+                            document.getElementById('nodeDetailActions').style.display = 
+                                Object.keys(editedFields).length > 0 ? 'flex' : 'none';
+                        });
+                        
+                        // 清空单元格并添加选择框
+                        td.textContent = '';
+                        td.appendChild(select);
+                        
+                        // 触发选择框动画效果
+                        setTimeout(() => {
+                            select.style.opacity = '1';
+                            select.style.transform = 'translateY(0)';
+                            select.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                        }, 50 + index * 20);
+                    } else {
+                        // 创建输入框
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.value = originalValue;
+                        input.className = 'input-field w-full';
+                        input.dataset.originalValue = originalValue;
+                        input.dataset.fieldName = fieldName;
+                        
+                        // 添加输入框动画效果
+                        input.style.opacity = '0';
+                        input.style.transform = 'translateY(4px)';
+                        
+                        // 监听输入变化
+                        input.addEventListener('input', function() {
+                            if (this.value !== this.dataset.originalValue) {
+                                editedFields[fieldName] = this.value;
+                                // 添加视觉反馈
+                                this.style.borderColor = 'var(--accent-color)';
+                                this.style.backgroundColor = 'rgba(59, 130, 246, 0.05)';
+                            } else {
+                                delete editedFields[fieldName];
+                                // 恢复默认样式
+                                this.style.borderColor = '';
+                                this.style.backgroundColor = '';
+                            }
+                            
+                            // 如果有编辑的字段，显示操作按钮
+                            document.getElementById('nodeDetailActions').style.display = 
+                                Object.keys(editedFields).length > 0 ? 'flex' : 'none';
+                        });
+                        
+                        // 清空单元格并添加输入框
+                        td.textContent = '';
+                        td.appendChild(input);
+                        
+                        // 触发输入框动画效果
+                        setTimeout(() => {
+                            input.style.opacity = '1';
+                            input.style.transform = 'translateY(0)';
+                            input.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                        }, 50 + index * 20); // 使用 index 替代 rows.indexOf(row)，创造级联效果
+                    }
                 }
             });
         }

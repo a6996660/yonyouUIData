@@ -17,6 +17,12 @@
       "port" : "12108",
       "username" : "ro_db_all",
       "password" : "MbRWs9QRjjKAGbERXFaJcE8k6eDhbRMf"
+    },
+    "other" : {
+      "host" : "",
+      "port" : "",
+      "username" : "",
+      "password" : ""
     }
   }
 }
