@@ -4,45 +4,60 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UI数据可视化工具</title>
+    <meta name="description" content="数据库关系可视化工具，帮助分析和查看表之间的关系">
+    
+    <!-- 性能优化：预加载关键资源 -->
+    <link rel="preload" href="css/index.css" as="style">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" as="style">
+    <link rel="preconnect" href="https://cdn.bootcdn.net">
+    
     <link href="css/index.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <!-- 引入 ECharts 图表库 -->
-    <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.4.2/echarts.min.js"></script>
+    
+    <!-- 引入 ECharts 图表库 - 使用defer属性延迟加载 -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.4.2/echarts.min.js" defer></script>
+    
+    <!-- 性能优化：使用async属性异步加载API处理脚本 -->
+    <script src="js/database-relation-api.js" async></script>
+    
     <script>
-        // ECharts备用加载机制
-        window.addEventListener('DOMContentLoaded', function() {
-            if (typeof echarts === 'undefined') {
-                console.log('主要CDN加载失败，尝试备用CDN...');
-                var script = document.createElement('script');
-                script.src = "https://cdn.staticfile.org/echarts/5.4.2/echarts.min.js";
-                script.onload = function() {
-                    console.log('备用CDN加载成功');
-                    if (typeof initializeCharts === 'function') {
-                        initializeCharts();
-                    }
-                };
-                script.onerror = function() {
-                    console.log('备用CDN加载失败，尝试本地文件...');
-                    var localScript = document.createElement('script');
-                    localScript.src = "js/libs/echarts.min.js";
-                    localScript.onload = function() {
-                        console.log('本地ECharts加载成功');
+        // ECharts备用加载机制 - 优化版
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查主要CDN是否加载成功
+            setTimeout(function() {
+                if (typeof echarts === 'undefined') {
+                    console.log('主要CDN加载失败，尝试备用CDN...');
+                    loadScript("https://cdn.staticfile.org/echarts/5.4.2/echarts.min.js", function() {
+                        console.log('备用CDN加载成功');
                         if (typeof initializeCharts === 'function') {
                             initializeCharts();
                         }
-                    };
-                    localScript.onerror = function() {
-                        console.error('所有ECharts库加载失败，请检查网络连接');
-                        alert('图表库加载失败，请检查网络连接或刷新页面重试');
-                    };
-                    document.head.appendChild(localScript);
-                };
+                    }, function() {
+                        console.log('备用CDN加载失败，尝试本地文件...');
+                        loadScript("js/libs/echarts.min.js", function() {
+                            console.log('本地ECharts加载成功');
+                            if (typeof initializeCharts === 'function') {
+                                initializeCharts();
+                            }
+                        }, function() {
+                            console.error('所有ECharts库加载失败，请检查网络连接');
+                            alert('图表库加载失败，请检查网络连接或刷新页面重试');
+                        });
+                    });
+                }
+            }, 1000);
+            
+            // 性能优化：脚本加载器
+            function loadScript(src, onSuccess, onError) {
+                var script = document.createElement('script');
+                script.src = src;
+                script.async = true;
+                script.onload = onSuccess;
+                script.onerror = onError;
                 document.head.appendChild(script);
             }
         });
     </script>
-    <!-- 引入API处理文件 -->
-    <script src="js/database-relation-api.js"></script>
     <style>
         :root {
             --primary-bg: #1a1b1e;
@@ -1320,6 +1335,155 @@
         #nodeDetailContent::-webkit-scrollbar-thumb {
             border: 1px solid var(--secondary-bg) !important; /* 更窄的边框 */
         }
+        
+        .search-no-results {
+            color: var(--text-secondary);
+            font-style: italic;
+            text-align: center;
+            padding: 10px;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 1280px) {
+            .tab-content-inner {
+                flex-direction: column;
+                height: auto;
+            }
+            
+            .left-panel {
+                flex: 0 0 auto;
+                width: 100%;
+                max-height: 300px;
+            }
+            
+            .right-panel {
+                flex: 0 0 auto;
+                width: 100%;
+                margin-top: 15px;
+                height: calc(100vh - 430px);
+                min-height: 300px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .header-container {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 10px;
+                gap: 10px;
+            }
+            
+            .input-area {
+                flex-wrap: wrap;
+            }
+            
+            .input-group {
+                width: 100%;
+            }
+            
+            .input-field, .select-field {
+                width: 100%;
+            }
+            
+            .button-group {
+                width: 100%;
+                justify-content: space-between;
+            }
+            
+            .tabs-header {
+                height: auto;
+                padding: 5px;
+            }
+            
+            .mock-visualization {
+                height: 200px;
+            }
+        }
+        
+        /* 高分辨率屏幕适配 */
+        @media (min-width: 1920px) {
+            .left-panel {
+                flex: 0 0 400px;
+            }
+            
+            .database-section h3, .relations-section h3, .tables-section h3,
+            .search-header h3 {
+                font-size: 18px;
+            }
+            
+            .database-item, .relation-item, .table-item {
+                padding: 10px 15px;
+                font-size: 15px;
+            }
+            
+            .mock-visualization {
+                height: 400px;
+            }
+        }
+        
+        /* 性能优化：减少布局抖动 */
+        .tab-content-inner, .left-panel, .right-panel,
+        .database-list, .relations-list, .tables-list,
+        .search-container, #searchResults, .graph-container {
+            contain: content;
+        }
+        
+        /* 平滑动画 */
+        .tab-item, .database-item, .relation-item, .table-item,
+        .search-result-item, #nodeSearchButton {
+            will-change: transform, background-color;
+        }
+        
+        /* 页签相关样式 */
+        .tabs-container {
+            width: 100%;
+            background-color: #343a40;
+            border-bottom: 1px solid #495057;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .tabs-header {
+            display: flex;
+            align-items: center;
+            height: 40px;
+            padding: 0 10px;
+            overflow: hidden;
+            max-width: 100%;
+        }
+        
+        .tabs-list {
+            display: flex;
+            overflow-x: auto;
+            flex-grow: 1;
+            scrollbar-width: thin;
+            scrollbar-color: #6c757d #212529;
+            -webkit-overflow-scrolling: touch; /* 平滑滚动 */
+            scroll-behavior: smooth; /* 平滑滚动 */
+            max-width: calc(100% - 40px); /* 留出添加按钮的空间 */
+        }
+        
+        .tabs-list::-webkit-scrollbar {
+            height: 6px;
+        }
+        
+        .tabs-list::-webkit-scrollbar-track {
+            background: #212529;
+            border-radius: 3px;
+        }
+        
+        .tabs-list::-webkit-scrollbar-thumb {
+            background-color: #6c757d;
+            border-radius: 3px;
+        }
+        
+        .tab-item {
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            height: 32px;
     </style>
 </head>
 <body>
@@ -2519,6 +2683,103 @@
         window.editedFields = editedFields;
         window.filterNodeDetailFields = filterNodeDetailFields;
         window.showSqlResultPopup = showSqlResultPopup;
+        
+        // 在文档加载完成后设置节点搜索
+        setTimeout(() => {
+            setupNodeSearch();
+        }, 1000);
+    </script>
+    <script>
+        // 性能监控函数
+        function monitorPerformance() {
+            // 记录页面加载时间
+            window.addEventListener('load', () => {
+                if (window.performance) {
+                    const pageLoadTime = window.performance.timing.loadEventEnd - window.performance.timing.navigationStart;
+                    console.info(`页面完全加载时间: ${pageLoadTime}ms`);
+                    
+                    // 记录资源加载情况
+                    const resources = window.performance.getEntriesByType('resource');
+                    let totalResourcesSize = 0;
+                    let slowResources = [];
+                    
+                    resources.forEach(resource => {
+                        // 估算大小 (如果有transferSize)
+                        if (resource.transferSize) {
+                            totalResourcesSize += resource.transferSize;
+                        }
+                        
+                        // 记录加载时间 > 500ms 的资源
+                        if (resource.duration > 500) {
+                            slowResources.push({
+                                name: resource.name,
+                                duration: Math.round(resource.duration)
+                            });
+                        }
+                    });
+                    
+                    console.info(`总资源大小: ${Math.round(totalResourcesSize / 1024)}KB`);
+                    
+                    if (slowResources.length > 0) {
+                        console.warn('加载缓慢的资源:', slowResources);
+                    }
+                }
+            });
+            
+            // 监控长任务
+            if ('PerformanceObserver' in window) {
+                try {
+                    const observer = new PerformanceObserver((list) => {
+                        for (const entry of list.getEntries()) {
+                            console.warn(`检测到长任务: ${Math.round(entry.duration)}ms`, entry);
+                        }
+                    });
+                    
+                    observer.observe({entryTypes: ['longtask']});
+                } catch (e) {
+                    console.error('PerformanceObserver 不可用:', e);
+                }
+            }
+        }
+        
+        // 启用性能监控 (仅在非生产环境)
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            monitorPerformance();
+        }
+        
+        // 优化图像加载
+        function lazyLoadImages() {
+            if ('IntersectionObserver' in window) {
+                const imageObserver = new IntersectionObserver((entries, observer) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            const src = img.getAttribute('data-src');
+                            if (src) {
+                                img.src = src;
+                                img.removeAttribute('data-src');
+                                imageObserver.unobserve(img);
+                            }
+                        }
+                    });
+                });
+                
+                document.querySelectorAll('img[data-src]').forEach(img => {
+                    imageObserver.observe(img);
+                });
+            } else {
+                // 降级处理
+                document.querySelectorAll('img[data-src]').forEach(img => {
+                    img.src = img.getAttribute('data-src');
+                    img.removeAttribute('data-src');
+                });
+            }
+        }
+        
+        // 页面就绪后执行延迟加载
+        document.addEventListener('DOMContentLoaded', () => {
+            lazyLoadImages();
+        });
     </script>
 </body>
 </html> 
