@@ -1084,7 +1084,13 @@ function showNodeDetails(details) {
     nodeDetails.style.zIndex = '100';
     nodeDetails.style.width = `${detailsWidth}px`;
     nodeDetails.style.maxHeight = `calc(90vh - 70px)`; // 减少高度，避免超出容器
+    nodeDetails.style.overflow = 'hidden'; // 防止整体溢出
     nodeDetails.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.3)'; // 添加阴影效果提高可视性
+    
+    // 确保内容区域可滚动
+    nodeDetailContent.style.maxHeight = `calc(90vh - 150px)`; // 为内容区域设置最大高度
+    nodeDetailContent.style.overflowY = 'auto'; // 设置垂直方向可滚动
+    nodeDetailContent.style.overflowX = 'hidden'; // 水平方向隐藏溢出
     
     // 隐藏操作按钮
     document.getElementById('nodeDetailActions').style.display = 'none';
