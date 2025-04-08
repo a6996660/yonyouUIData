@@ -1,10 +1,10 @@
 {
   "configs" : {
     "test" : {
-      "host" : "localhost",
-      "port" : "3306",
-      "username" : "root",
-      "password" : ""
+      "host" : "dbproxy.diwork.com",
+      "port" : "12368",
+      "username" : "bip_yxy_serv",
+      "password" : "hbvzOoHcocB2y9SFtV8iWDjY5DKLXIjn"
     },
     "daily" : {
       "host" : "dbproxy.diwork.com",
