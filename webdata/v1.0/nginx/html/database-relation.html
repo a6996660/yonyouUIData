@@ -1317,9 +1317,16 @@
                     </div>
                 </div>
                 
-                <div class="input-group">
+                <div class="input-group database-select-container">
                     <label for="tableCode">表单编码:</label>
-                    <input type="text" id="tableCode" class="input-field" placeholder="表单编码">
+                    <div class="custom-select-wrapper">
+                        <input type="text" id="tableCodeSearch" class="input-field" placeholder="搜索或选择表单编码...">
+                        <div class="custom-select-dropdown" id="tableCodeDropdown"></div>
+                    </div>
+                    <input type="hidden" id="tableCode" value="">
+                    <div class="database-loading" id="tableCodeLoading">
+                        <span class="mini-loading-spinner"></span>
+                    </div>
                 </div>
                 
                 <div class="input-group">

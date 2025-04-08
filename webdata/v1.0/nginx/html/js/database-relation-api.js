@@ -22,6 +22,7 @@ window.updateTableData = updateTableData;
 window.saveDbConfigsToServer = saveDbConfigsToServer;
 window.fetchDbConfigsFromServer = fetchDbConfigsFromServer;
 window.fetchDatabaseList = fetchDatabaseList;
+window.fetchBillNoList = fetchBillNoList;
 
 /**
  * 获取数据库表关联树形结构
@@ -610,6 +611,65 @@ async function fetchDatabaseList(environment, dbConfig) {
         return data.data || [];
     } catch (error) {
         console.error('获取数据库列表失败:', error);
+        throw error;
+    }
+}
+
+/**
+ * 获取表单编码列表
+ * 
+ * @param {string} environment 环境（测试、日常、预发）
+ * @param {string} dbName 数据库名称
+ * @param {string} ytenant_id 租户ID
+ * @param {Object} dbConfig 数据库配置信息
+ * @returns {Promise<Array>} 返回表单编码列表
+ */
+async function fetchBillNoList(environment, dbName, ytenant_id, dbConfig) {
+    try {
+        const url = `${API_BASE_URL}/db-relation/billno-list`;
+        
+        const requestData = {
+            environment: environment,
+            dbName: dbName,
+            ytenant_id: ytenant_id || "0",
+            dbConfig: dbConfig
+        };
+        
+        console.log("获取表单编码列表请求数据:", {
+            environment,
+            dbName,
+            ytenant_id,
+            dbConfig: dbConfig ? { ...dbConfig, password: '******' } : null // 隐藏密码
+        });
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        if (!response.ok) {
+            let errorData;
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                errorData = { message: '未知错误' };
+            }
+            console.error("API错误响应:", errorData);
+            throw new Error(`API请求失败: ${response.status} - ${JSON.stringify(errorData)}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.code !== '0000' && data.code !== 200) {
+            throw new Error(data.message || '获取表单编码列表失败');
+        }
+        
+        return data.data || [];
+    } catch (error) {
+        console.error('获取表单编码列表失败:', error);
         throw error;
     }
 } 

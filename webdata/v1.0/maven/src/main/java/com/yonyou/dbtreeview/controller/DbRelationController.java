@@ -213,4 +213,47 @@ public class DbRelationController {
             return ApiResponse.error("获取数据库列表失败: " + e.getMessage());
         }
     }
+    
+    /**
+     * 获取表单编码列表
+     * 
+     * @param request 包含环境、数据库名称、租户ID和数据库配置的请求
+     * @return 表单编码列表
+     */
+    @PostMapping("/billno-list")
+    public ApiResponse<List<String>> getBillNoList(@RequestBody DbRelationRequest request) {
+        logger.info("接收到获取表单编码列表请求: 环境={}, 数据库名={}, 租户ID={}", 
+                request.getEnvironment(), request.getDbName(), request.getYtenant_id());
+        
+        try {
+            // 参数验证
+            if (request.getDbName() == null || request.getDbName().isEmpty()) {
+                return ApiResponse.error("数据库名称未指定");
+            }
+            
+            if (request.getDbConfig() == null) {
+                return ApiResponse.error("数据库配置未指定");
+            }
+            
+            // 创建DTO对象
+            DbConfigDTO dbConfigDTO = new DbConfigDTO();
+            dbConfigDTO.setHost(request.getDbConfig().getHost());
+            dbConfigDTO.setPort(request.getDbConfig().getPort());
+            dbConfigDTO.setUsername(request.getDbConfig().getUsername());
+            dbConfigDTO.setPassword(request.getDbConfig().getPassword());
+            
+            // 调用服务获取表单编码列表
+            List<String> billNoList = dbRelationService.getBillNoList(
+                request.getEnvironment(),
+                request.getDbName(),
+                request.getYtenant_id(),
+                dbConfigDTO
+            );
+            
+            return ApiResponse.success(billNoList);
+        } catch (Exception e) {
+            logger.error("获取表单编码列表失败", e);
+            return ApiResponse.error("获取表单编码列表失败: " + e.getMessage());
+        }
+    }
 } 

@@ -200,14 +200,11 @@ public class DbRelationServiceImpl implements DbRelationService {
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery("SHOW DATABASES");
             
-            // 添加数据库到列表
             while (rs.next()) {
                 String dbName = rs.getString(1);
                 // 排除系统数据库
-                if (!dbName.equals("information_schema") && 
-                    !dbName.equals("mysql") && 
-                    !dbName.equals("performance_schema") && 
-                    !dbName.equals("sys")) {
+                if (!dbName.equals("information_schema") && !dbName.equals("mysql") && 
+                    !dbName.equals("performance_schema") && !dbName.equals("sys")) {
                     databaseList.add(dbName);
                 }
             }
@@ -215,11 +212,59 @@ public class DbRelationServiceImpl implements DbRelationService {
             rs.close();
             stmt.close();
             
-            logger.info("获取到{}个数据库", databaseList.size());
             return databaseList;
         } catch (Exception e) {
             logger.error("获取数据库列表失败", e);
             throw new RuntimeException("获取数据库列表失败: " + e.getMessage(), e);
+        } finally {
+            closeConnection(conn);
+        }
+    }
+    
+    @Override
+    public List<String> getBillNoList(String environment, String dbName, String ytenant_id, DbConfigDTO dbConfig) {
+        Connection conn = null;
+        List<String> billNoList = new ArrayList<>();
+        
+        try {
+            // 连接数据库
+            conn = getConnection(dbName, dbConfig);
+            
+            // 构建查询SQL
+            StringBuilder sqlBuilder = new StringBuilder();
+            sqlBuilder.append("SELECT cBillNo FROM bill_base WHERE 1=1");
+            
+            // 添加租户ID条件，如果有
+            if (ytenant_id != null && !ytenant_id.isEmpty()) {
+                sqlBuilder.append(" AND ytenant_id = ?");
+            }
+            
+            // 准备查询语句
+            PreparedStatement stmt = conn.prepareStatement(sqlBuilder.toString());
+            
+            // 设置参数
+            if (ytenant_id != null && !ytenant_id.isEmpty()) {
+                stmt.setString(1, ytenant_id);
+            }
+            
+            // 执行查询
+            ResultSet rs = stmt.executeQuery();
+            
+            // 处理结果
+            while (rs.next()) {
+                String billNo = rs.getString("cBillNo");
+                if (billNo != null && !billNo.trim().isEmpty()) {
+                    billNoList.add(billNo);
+                }
+            }
+            
+            rs.close();
+            stmt.close();
+            
+            return billNoList;
+        } catch (Exception e) {
+            logger.error("获取表单编码列表失败", e);
+            throw new RuntimeException("获取表单编码列表失败: " + e.getMessage(), e);
         } finally {
             closeConnection(conn);
         }

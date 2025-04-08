@@ -8,6 +8,8 @@ const dbNameInput = document.getElementById('dbName');
 const dbNameSearchInput = document.getElementById('dbNameSearch');
 const dbDropdown = document.getElementById('dbDropdown');
 const tableCodeInput = document.getElementById('tableCode');
+const tableCodeSearchInput = document.getElementById('tableCodeSearch');
+const tableCodeDropdown = document.getElementById('tableCodeDropdown');
 const searchButton = document.getElementById('searchButton');
 const configButton = document.getElementById('configButton');
 const saveConfigButton = document.getElementById('saveConfigButton');
@@ -15,6 +17,7 @@ const closeConfigModal = document.getElementById('closeConfigModal');
 const configModal = document.getElementById('configModal');
 const loadingIndicator = document.getElementById('loadingIndicator');
 const databaseLoading = document.getElementById('databaseLoading');
+const tableCodeLoading = document.getElementById('tableCodeLoading');
 const graphContainer = document.getElementById('graph-container');
 const nodeDetails = document.getElementById('nodeDetails');
 const nodeDetailContent = document.getElementById('nodeDetailContent');
@@ -24,6 +27,9 @@ let myChart = null;
 
 // 数据库列表
 let databaseList = [];
+
+// 表单编码列表
+let billNoList = [];
 
 // 数据库配置存储
 let dbConfigs = {
@@ -110,6 +116,28 @@ function initEventListeners() {
     // 数据库搜索框按键事件 - 上下键导航和回车键选择
     dbNameSearchInput.addEventListener('keydown', function(e) {
         handleDatabaseKeyboardNavigation(e);
+    });
+    
+    // 表单编码搜索框获得焦点时显示下拉列表
+    tableCodeSearchInput.addEventListener('focus', function() {
+        showTableCodeDropdown();
+    });
+    
+    // 表单编码搜索框失去焦点时隐藏下拉列表（延迟隐藏，以便点击选项生效）
+    tableCodeSearchInput.addEventListener('blur', function() {
+        setTimeout(function() {
+            hideTableCodeDropdown();
+        }, 200);
+    });
+    
+    // 表单编码搜索框输入事件 - 过滤表单编码列表
+    tableCodeSearchInput.addEventListener('input', function() {
+        filterTableCodeOptions(this.value);
+    });
+    
+    // 表单编码搜索框按键事件 - 上下键导航和回车键选择
+    tableCodeSearchInput.addEventListener('keydown', function(e) {
+        handleTableCodeKeyboardNavigation(e);
     });
     
     // 配置按钮点击事件
@@ -242,8 +270,8 @@ async function performSearch() {
     }
     
     if (!billNo) {
-        alert('请输入表单编码！');
-        tableCodeInput.focus();
+        alert('请选择表单编码！');
+        tableCodeSearchInput.focus();
         return;
     }
     
@@ -3493,6 +3521,9 @@ function selectDatabase(database) {
     dbNameInput.value = database;
     dbNameSearchInput.value = database;
     hideDatabaseDropdown();
+    
+    // 数据库变化后，自动加载该数据库的表单编码列表
+    loadBillNoList();
 }
 
 /**
@@ -3929,3 +3960,224 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+/**
+ * 加载表单编码列表
+ */
+async function loadBillNoList() {
+    try {
+        // 清空选择
+        tableCodeInput.value = '';
+        tableCodeSearchInput.value = '';
+        
+        // 清空下拉列表
+        tableCodeDropdown.innerHTML = '';
+        
+        // 获取当前环境和数据库
+        const environment = dbEnvironmentSelect.value;
+        const dbName = dbNameInput.value;
+        const ytenant_id = document.getElementById('ytenant_id').value.trim() || "0";
+        
+        // 检查数据库是否选择
+        if (!dbName) {
+            // 显示数据库未选择的提示
+            tableCodeDropdown.innerHTML = '<div class="database-error">请先选择数据库</div>';
+            showTableCodeDropdown();
+            return;
+        }
+        
+        // 获取当前环境的数据库配置
+        const dbConfig = dbConfigs[environment];
+        
+        // 检查配置是否填写
+        if (!dbConfig || !dbConfig.host || !dbConfig.port || !dbConfig.username || !dbConfig.password) {
+            // 显示配置未设置的提示
+            tableCodeDropdown.innerHTML = '<div class="database-error">请先配置数据库连接信息</div>';
+            showTableCodeDropdown();
+            return;
+        }
+        
+        // 显示加载中
+        tableCodeLoading.style.display = 'block';
+        
+        try {
+            // 调用API获取表单编码列表
+            billNoList = await fetchBillNoList(environment, dbName, ytenant_id, dbConfig);
+            
+            // 渲染表单编码列表
+            renderTableCodeOptions(billNoList);
+        } catch (error) {
+            console.error('获取表单编码列表失败:', error);
+            tableCodeDropdown.innerHTML = `<div class="database-error">获取表单编码列表失败: ${error.message}</div>`;
+            showTableCodeDropdown();
+        } finally {
+            // 隐藏加载中
+            tableCodeLoading.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('加载表单编码列表出错:', error);
+        tableCodeLoading.style.display = 'none';
+    }
+}
+
+/**
+ * 渲染表单编码选项列表
+ * @param {Array} billNos 表单编码列表
+ */
+function renderTableCodeOptions(billNos) {
+    // 清空下拉列表
+    tableCodeDropdown.innerHTML = '';
+    
+    // 检查是否有数据
+    if (!billNos || billNos.length === 0) {
+        tableCodeDropdown.innerHTML = '<div class="database-empty">未找到表单编码</div>';
+        return;
+    }
+    
+    // 创建选项
+    billNos.forEach(billNo => {
+        const option = document.createElement('div');
+        option.className = 'database-option';
+        option.textContent = billNo;
+        option.setAttribute('data-value', billNo);
+        
+        // 点击选择
+        option.addEventListener('click', function() {
+            selectTableCode(billNo);
+        });
+        
+        tableCodeDropdown.appendChild(option);
+    });
+}
+
+/**
+ * 显示表单编码下拉列表
+ */
+function showTableCodeDropdown() {
+    tableCodeDropdown.style.display = 'block';
+}
+
+/**
+ * 隐藏表单编码下拉列表
+ */
+function hideTableCodeDropdown() {
+    tableCodeDropdown.style.display = 'none';
+}
+
+/**
+ * 选择表单编码
+ * @param {string} billNo 表单编码
+ */
+function selectTableCode(billNo) {
+    tableCodeInput.value = billNo;
+    tableCodeSearchInput.value = billNo;
+    hideTableCodeDropdown();
+}
+
+/**
+ * 过滤表单编码选项
+ * @param {string} searchText 搜索文本
+ */
+function filterTableCodeOptions(searchText) {
+    // 首先显示下拉列表
+    showTableCodeDropdown();
+    
+    // 如果没有数据，尝试加载
+    if (billNoList.length === 0) {
+        loadBillNoList();
+        return;
+    }
+    
+    // 清空高亮
+    const options = tableCodeDropdown.querySelectorAll('.database-option');
+    options.forEach(option => {
+        option.classList.remove('highlighted');
+    });
+    
+    if (!searchText) {
+        // 如果搜索框为空，显示所有选项
+        renderTableCodeOptions(billNoList);
+        return;
+    }
+    
+    // 过滤匹配的选项
+    const filteredBillNos = billNoList.filter(billNo => 
+        billNo.toLowerCase().includes(searchText.toLowerCase())
+    );
+    
+    // 渲染过滤后的选项
+    renderTableCodeOptions(filteredBillNos);
+    
+    // 如果只有一个匹配项，高亮显示
+    if (filteredBillNos.length === 1) {
+        const option = tableCodeDropdown.querySelector('.database-option');
+        if (option) {
+            option.classList.add('highlighted');
+        }
+    }
+}
+
+/**
+ * 处理表单编码选择框的键盘导航
+ * @param {KeyboardEvent} event 键盘事件
+ */
+function handleTableCodeKeyboardNavigation(event) {
+    // 获取所有选项
+    const options = tableCodeDropdown.querySelectorAll('.database-option');
+    
+    // 如果没有选项，不处理
+    if (options.length === 0) return;
+    
+    // 获取当前高亮的选项
+    let currentHighlighted = tableCodeDropdown.querySelector('.database-option.highlighted');
+    let currentIndex = -1;
+    
+    if (currentHighlighted) {
+        // 找到当前高亮选项的索引
+        for (let i = 0; i < options.length; i++) {
+            if (options[i] === currentHighlighted) {
+                currentIndex = i;
+                break;
+            }
+        }
+    }
+    
+    // 根据按键处理导航
+    switch (event.key) {
+        case 'ArrowDown':
+            event.preventDefault();
+            // 向下导航，选择下一个选项
+            if (currentIndex < options.length - 1) {
+                if (currentHighlighted) currentHighlighted.classList.remove('highlighted');
+                options[currentIndex + 1].classList.add('highlighted');
+                options[currentIndex + 1].scrollIntoView({ block: 'nearest' });
+            }
+            break;
+            
+        case 'ArrowUp':
+            event.preventDefault();
+            // 向上导航，选择上一个选项
+            if (currentIndex > 0) {
+                if (currentHighlighted) currentHighlighted.classList.remove('highlighted');
+                options[currentIndex - 1].classList.add('highlighted');
+                options[currentIndex - 1].scrollIntoView({ block: 'nearest' });
+            }
+            break;
+            
+        case 'Enter':
+            event.preventDefault();
+            // 回车选择当前高亮选项
+            if (currentHighlighted) {
+                selectTableCode(currentHighlighted.getAttribute('data-value'));
+            } else if (options.length === 1) {
+                // 如果只有一个选项，自动选择
+                selectTableCode(options[0].getAttribute('data-value'));
+            }
+            break;
+            
+        case 'Escape':
+            // ESC键隐藏下拉列表
+            hideTableCodeDropdown();
+            break;
+    }
+}

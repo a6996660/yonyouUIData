@@ -59,4 +59,15 @@ public interface DbRelationService {
      * @return 数据库列表
      */
     List<String> getDatabaseList(String environment, DbConfigDTO dbConfig);
+    
+    /**
+     * 获取表单编码列表
+     *
+     * @param environment 环境（测试、日常、预发）
+     * @param dbName 数据库名称
+     * @param ytenant_id 租户ID
+     * @param dbConfig 数据库配置
+     * @return 表单编码列表
+     */
+    List<String> getBillNoList(String environment, String dbName, String ytenant_id, DbConfigDTO dbConfig);
 } 
