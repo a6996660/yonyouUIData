@@ -444,14 +444,14 @@
         /* 节点详情样式 */
         .node-details {
             background-color: var(--secondary-bg);
-            padding: 20px;
-            border-radius: var(--radius-lg);
-            margin-top: 20px;
+            padding: 12px 15px; /* 减小内边距，从20px减小到上下12px，左右15px */
+            border-radius: var(--radius-md); /* 减小圆角 */
+            margin-top: 15px; /* 减小上边距 */
             display: none;
-            max-width: 800px;
+            max-width: 1200px; /* 继续增加宽度，从1000px到1200px */
             margin-left: auto;
             margin-right: auto;
-            box-shadow: var(--shadow-lg);
+            box-shadow: var(--shadow-md); /* 减小阴影 */
             border: 1px solid var(--border-color);
             position: relative;
             animation: scaleIn 0.35s cubic-bezier(0.165, 0.84, 0.44, 1);
@@ -472,33 +472,32 @@
         .node-details h3 {
             margin-top: 0;
             color: var(--accent-color);
-            font-size: 18px;
+            font-size: 16px; /* 减小字体大小 */
             font-weight: 600;
-            padding-bottom: 12px;
+            padding-bottom: 8px; /* 减小下内边距 */
             border-bottom: 1px solid var(--border-color);
-            margin-bottom: 16px;
+            margin-bottom: 12px; /* 减小下外边距 */
         }
         
         .node-details table {
             width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
+            border-collapse: collapse; /* 改为collapse，消除单元格间距 */
             table-layout: fixed;
-            border-radius: var(--radius-md);
+            border-radius: var(--radius-sm); /* 减小圆角 */
             overflow: hidden;
             border: 1px solid var(--border-color);
         }
         
         .node-details th, .node-details td {
             border: 1px solid var(--border-color);
-            padding: 10px 14px;
+            padding: 6px 12px; /* 减小内边距 */
             text-align: left;
             font-size: 13px;
         }
         
         .node-details th {
             background-color: rgba(70, 73, 80, 0.3);
-            width: 40%;
+            width: 25%;  /* 继续减小表头占比 */
             color: var(--text-primary);
             font-weight: 500;
             word-break: keep-all;
@@ -508,11 +507,11 @@
         }
         
         .node-details td {
-            width: 60%;
+            width: 75%;  /* 增加内容占比 */
             color: var(--text-secondary);
             word-break: break-word;
             white-space: pre-wrap;
-            line-height: 1.4;
+            line-height: 1.3; /* 减小行高 */
         }
         
         .node-details tr:nth-child(even) {
@@ -530,10 +529,10 @@
         /* 节点详情滚动内容样式 */
         #nodeDetailContent {
             overflow-x: hidden;
-            max-height: calc(80vh - 180px);
+            max-height: calc(88vh - 140px); /* 增加最大高度 */
             overflow-y: auto;
-            padding-right: 6px;
-            padding-bottom: 70px;
+            padding-right: 4px; /* 减小右内边距 */
+            padding-bottom: 60px; /* 减小底部内边距，给底部按钮留空间 */
             scrollbar-width: thin;
             scrollbar-color: #494b50 transparent;
         }
@@ -579,32 +578,24 @@
         
         /* 节点详情底部操作按钮 */
         #nodeDetailActions {
-            margin-top: 16px;
-            padding: 16px;
+            margin-top: 10px; /* 减小上边距 */
+            padding: 10px; /* 减小内边距 */
             border-top: 1px solid var(--border-color);
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 16px;
+            gap: 10px; /* 减小按钮间距 */
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
             background-color: var(--secondary-bg);
             z-index: 10;
-            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
-            border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+            box-shadow: 0 -3px 8px rgba(0, 0, 0, 0.12); /* 减小阴影 */
+            border-radius: 0 0 var(--radius-md) var(--radius-md); /* 减小圆角 */
             margin-left: 0;
             margin-right: 0;
             margin-bottom: 0;
-            width: 100%;
-            box-sizing: border-box;
-            animation: slideUp 0.3s ease-out;
-        }
-        
-        @keyframes slideUp {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
         }
         
         #saveNodeDetailsButton, #cancelNodeEditButton {
@@ -616,7 +607,7 @@
             border-radius: var(--radius-sm);
             transition: all var(--transition-fast);
             cursor: pointer;
-            padding: 10px 20px;
+            padding: 8px 16px; /* 减小内边距 */
             font-size: 13px;
         }
         
@@ -1297,6 +1288,37 @@
         
         #tableCodeDropdown {
             width: 240px !important;
+        }
+        
+        /* SQL消息文本 */
+        .sql-message-text {
+            line-height: 1.5;
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* 详情浮窗进一步优化 */
+        .node-details {
+            max-width: 1300px !important; /* 进一步增加宽度 */
+        }
+        
+        .node-details th, .node-details td {
+            border: 1px solid rgba(70, 73, 80, 0.35) !important; /* 更淡的边框 */
+            padding: 4px 8px !important; /* 更小的内边距 */
+            font-size: 12px !important; /* 更小的字体 */
+        }
+        
+        .node-details tr:nth-child(even) {
+            background-color: rgba(70, 73, 80, 0.05) !important; /* 更淡的背景 */
+        }
+        
+        #nodeDetailContent::-webkit-scrollbar {
+            width: 5px !important; /* 更窄的滚动条 */
+            height: 5px !important;
+        }
+        
+        #nodeDetailContent::-webkit-scrollbar-thumb {
+            border: 1px solid var(--secondary-bg) !important; /* 更窄的边框 */
         }
     </style>
 </head>
