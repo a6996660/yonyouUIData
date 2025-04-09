@@ -752,7 +752,20 @@ public class DbRelationServiceImpl implements DbRelationService {
                     
                     for (int i = 1; i <= columnCount; i++) {
                         String columnName = meta.getColumnName(i);
-                        Object value = rs.getObject(i);
+                        int columnType = meta.getColumnType(i);
+                        
+                        // 对于可能包含大数值的字段，使用getString方法以保留完整精度
+                        Object value;
+                        if (columnName.equalsIgnoreCase("id") || 
+                            columnName.toLowerCase().endsWith("id") || 
+                            columnName.toLowerCase().startsWith("id") ||
+                            columnType == Types.BIGINT || 
+                            columnType == Types.NUMERIC || 
+                            columnType == Types.DECIMAL) {
+                            value = rs.getString(i);
+                        } else {
+                            value = rs.getObject(i);
+                        }
                         data.put(columnName, value);
                     }
                 }
