@@ -403,13 +403,14 @@
         }
         
         #nodeSearchInput {
+            display: inline-block; /* 确保输入框和按钮在同一行 */
+            width: calc(100% - 50px); /* 调整宽度以适应按钮 */
             background-color: var(--input-bg);
             border: 1px solid var(--border-color);
             border-radius: var(--radius-sm);
             padding: 8px 12px;
             color: var(--text-primary);
             font-size: 13px;
-            width: 100%;
             transition: all var(--transition-fast);
         }
         
@@ -420,6 +421,10 @@
         }
         
         #nodeSearchButton {
+            display: inline-block; /* 确保按钮和输入框在同一行 */
+            margin-left: 8px;
+            height: 34px;
+            flex-shrink: 0;
             background-color: var(--accent-color);
             border: none;
             border-radius: var(--radius-sm);
@@ -429,7 +434,6 @@
             font-weight: 500;
             cursor: pointer;
             transition: all var(--transition-fast);
-            height: 34px;
         }
         
         #nodeSearchButton:hover {
