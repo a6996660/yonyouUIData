@@ -31,6 +31,9 @@ let databaseList = [];
 // 表单编码列表
 let billNoList = [];
 
+// 节点折叠展开锁定标志 - 控制是否允许节点展开折叠
+let isNodeCollapseEnabled = true; 
+
 // 数据库配置存储
 let dbConfigs = {
     test: { host: '', port: '', username: '', password: '' },
@@ -441,6 +444,32 @@ function renderGraph(data) {
         // 保存字体大小为全局变量，供其他函数使用
         window.baseFontSize = nodeFontSize;
         
+        // 检查是否需要全部展开节点
+        const expandAllNodesCheckbox = document.getElementById('expand-all-nodes');
+        const shouldExpandAll = expandAllNodesCheckbox && expandAllNodesCheckbox.checked;
+        
+        // 如果需要展开所有节点，对处理后的数据应用递归展开处理
+        if (shouldExpandAll && processedData) {
+            // 递归处理数据，确保包括分组节点在内的所有节点都被展开
+            function ensureAllNodesExpanded(node) {
+                if (!node) return;
+                
+                // 确保节点展开
+                if (node.collapsed !== undefined) {
+                    node.collapsed = false;
+                }
+                
+                // 处理子节点
+                if (node.children && node.children.length > 0) {
+                    node.children.forEach(ensureAllNodesExpanded);
+                }
+            }
+            
+            // 应用递归展开
+            ensureAllNodesExpanded(processedData);
+            console.log('确保所有节点已展开，包括分组节点');
+        }
+        
         // 设置图表配置
         const option = {
             backgroundColor: '#303134',
@@ -547,7 +576,7 @@ function renderGraph(data) {
                             }
                         }
                     },
-                    expandAndCollapse: true,
+                    expandAndCollapse: isNodeCollapseEnabled, // 设置展开/折叠的配置 - 根据锁定状态设置
                     animationDuration: 550,
                     animationDurationUpdate: 750,
                     lineStyle: {
@@ -812,6 +841,75 @@ function renderGraph(data) {
             }
         }, 500);
         
+        // 添加自定义事件处理，区分节点的点击区域
+        myChart.getZr().on('mousemove', function(event) {
+            // 获取鼠标坐标下的图形元素
+            const hoveredEl = event.target;
+            
+            // 检查是否悬停在节点上
+            if (hoveredEl) {
+                // 检查是否是节点的圆点
+                const isSymbol = hoveredEl.parent && hoveredEl.parent.isSymbol;
+                const isLabel = hoveredEl.style && hoveredEl.style.text;
+                
+                // 获取悬停的节点数据
+                let nodeData = null;
+                if (hoveredEl.dataIndex !== undefined) {
+                    try {
+                        const chartOption = myChart.getOption();
+                        nodeData = chartOption.series[0].data[hoveredEl.dataIndex];
+                    } catch (e) {
+                        console.warn('获取节点数据失败:', e);
+                    }
+                }
+                
+                // 是否是非叶子节点
+                const hasChildren = nodeData && nodeData.children && nodeData.children.length > 0;
+                
+                // 根据悬停区域修改鼠标样式和标题
+                if (isSymbol) {
+                    // 检查是否锁定了折叠功能
+                    if (!isNodeCollapseEnabled) {
+                        // 锁定状态下，圆点显示为禁用样式
+                        document.body.style.cursor = 'not-allowed';
+                        
+                        // 添加悬停提示
+                        if (hoveredEl.parent) {
+                            hoveredEl.parent.attr({
+                                title: '节点展开/折叠功能已锁定',
+                                cursor: 'not-allowed'
+                            });
+                        }
+                    } else {
+                        // 未锁定状态下，圆点显示为可点击样式
+                        document.body.style.cursor = 'pointer';
+                        
+                        // 添加悬停提示
+                        if (hoveredEl.parent) {
+                            hoveredEl.parent.attr({
+                                title: hasChildren ? '点击展开/折叠节点' : '叶子节点',
+                                cursor: 'pointer'
+                            });
+                        }
+                    }
+                } else if (isLabel) {
+                    // 在文本上显示指针样式（表示可点击查看详情）
+                    document.body.style.cursor = 'pointer';
+                    
+                    // 添加悬停提示
+                    hoveredEl.attr({
+                        title: '点击查看节点详情',
+                        cursor: 'pointer'
+                    });
+                } else {
+                    // 其他区域恢复默认样式
+                    document.body.style.cursor = 'default';
+                }
+            } else {
+                // 不在任何元素上时恢复默认样式
+                document.body.style.cursor = 'default';
+            }
+        });
     } catch (error) {
         console.error('渲染图表失败:', error);
         // 创建错误信息元素而不是替换整个容器内容
@@ -1505,6 +1603,10 @@ function processTreeGrouping(data, enableGrouping = false) {
     // 创建深拷贝
     const newData = JSON.parse(JSON.stringify(data));
     
+    // 获取"展开所有节点"控件的状态
+    const expandAllNodesCtrl = document.getElementById('expand-all-nodes');
+    const shouldExpandAll = expandAllNodesCtrl ? expandAllNodesCtrl.checked : false;
+    
     // 递归处理节点
     function processNode(node) {
         if (!node) return null;
@@ -1551,15 +1653,19 @@ function processTreeGrouping(data, enableGrouping = false) {
                     // 基于表名生成唯一颜色
                     const color = getGroupColor(child.tableName);
                     
-                    // 对于大组，添加可展开/折叠功能
+                    // 对于大组，正常情况下添加可展开/折叠功能
                     const isLargeGroup = typeCounts[child.tableName] > 10;
+                    
+                    // 但如果勾选了"展开所有节点"，则强制展开状态
+                    // 这样billitem_base等节点将始终保持展开
+                    const shouldCollapseGroup = isLargeGroup && !shouldExpandAll;
                     
                     groups[child.tableName] = {
                         name: `${child.tableName} (${typeCounts[child.tableName]}个)`,
                         tableName: `${child.tableName}_group`,
                         id: `group_${child.tableName}_${Date.now()}`, // 确保ID唯一
                         isGroup: true, // 标记为分组节点
-                        collapsed: isLargeGroup, // 大组默认折叠
+                        collapsed: shouldCollapseGroup, // 根据条件决定是否折叠
                         children: [],
                         itemStyle: {
                             color: color,  // 自定义颜色
@@ -1584,6 +1690,10 @@ function processTreeGrouping(data, enableGrouping = false) {
                         }
                     };
                     newChildren.push(groups[child.tableName]);
+                    
+                    if (groups[child.tableName].tableName.includes('billitem_base')) {
+                        console.log('创建billitem_base分组节点, 展开状态:', !groups[child.tableName].collapsed);
+                    }
                 }
                 
                 // 递归处理子节点，然后添加到对应分组
@@ -1744,7 +1854,7 @@ function applyCustomLayout() {
     const nodeFontSize = parseInt(document.getElementById('node-font-size').value);
     const leafSpacing = parseInt(document.getElementById('leaf-spacing').value || '30'); // 叶子节点间距值
     
-    console.log('应用布局: 节点间距=', nodeSpacing, '层级间距=', layerSpacing, '叶子节点间距=', leafSpacing);
+    console.log('应用布局: 节点间距=', nodeSpacing, '层级间距=', layerSpacing, '叶子节点间距=', leafSpacing, '展开所有节点=', expandAll);
     
     try {
         // 重新处理数据
@@ -1752,8 +1862,39 @@ function applyCustomLayout() {
             ? processTreeGrouping(window.originalTreeData, true) 
             : JSON.parse(JSON.stringify(window.originalTreeData));
         
-        // 处理数据，修改叶子节点间距 - 使用叶子节点间距调整同一父节点下的叶子节点布局
-        // 我们在数据层面上通过修改节点结构来实现上下间距调整
+        // 如果需要展开所有节点，递归处理节点确保所有节点（包括分组节点）都被展开
+        if (expandAll) {
+            console.log('应用布局时展开所有节点，包括billitem_base等分组节点');
+            
+            // 递归处理数据，确保所有节点都被展开
+            function ensureAllNodesExpandedBeforeLayout(node) {
+                if (!node) return;
+                
+                // 特别处理：确保节点展开
+                if (node.collapsed !== undefined) {
+                    node.collapsed = false;
+                }
+                
+                // 特别标记billitem_base等节点，强制展开
+                if (node.tableName && (
+                    node.tableName.includes('billitem_base') || 
+                    node.tableName.includes('_group')
+                )) {
+                    console.log('强制展开分组节点:', node.name || node.tableName);
+                    node.collapsed = false;
+                }
+                
+                // 处理子节点
+                if (node.children && node.children.length > 0) {
+                    node.children.forEach(ensureAllNodesExpandedBeforeLayout);
+                }
+            }
+            
+            // 应用展开处理
+            ensureAllNodesExpandedBeforeLayout(processedData);
+        }
+        
+        // 处理数据，修改叶子节点间距
         processedData = processNodeSpacing(processedData, leafSpacing);
         
         // 更新配置
@@ -1844,8 +1985,51 @@ function applyCustomLayout() {
             replaceMerge: ['series']
         });
         
+        // 应用后再次检查展开状态，确保所有节点都被正确展开
+        if (expandAll) {
+            setTimeout(() => {
+                try {
+                    // 获取当前配置
+                    const currentOption = myChart.getOption();
+                    
+                    // 递归处理数据，确保所有节点都被展开
+                    function verifyAndExpandAllNodes(node) {
+                        if (!node) return;
+                        
+                        // 确保节点展开
+                        if (node.collapsed) {
+                            console.log('发现布局后仍折叠的节点，强制展开:', node.name);
+                            node.collapsed = false;
+                        }
+                        
+                        // 处理子节点
+                        if (node.children && node.children.length > 0) {
+                            node.children.forEach(verifyAndExpandAllNodes);
+                        }
+                    }
+                    
+                    // 如果存在数据，递归展开
+                    if (currentOption.series[0].data && currentOption.series[0].data.length > 0) {
+                        verifyAndExpandAllNodes(currentOption.series[0].data[0]);
+                        myChart.setOption(currentOption);
+                        console.log('布局后二次检查，确保所有节点展开');
+                    }
+                } catch (error) {
+                    console.error('布局后检查节点展开状态时出错:', error);
+                }
+            }, 100);
+        }
+        
         // 立即更新字体大小
         window.updateNodeLabelSize();
+        
+        // 显示成功应用布局的反馈信息
+        showTemporaryMessage(
+            expandAll 
+                ? '已应用布局并展开所有节点（包括billitem_base等分组节点）' 
+                : '已应用自定义布局',
+            'success'
+        );
         
         console.log('自定义布局已应用', {
             enableGrouping,
@@ -1853,13 +2037,11 @@ function applyCustomLayout() {
             layerSpacing,
             leafSpacing,
             expandAll,
-            nodeFontSize,
-            spacePercentage,
-            curveness,
-            labelDistance
+            nodeFontSize
         });
     } catch (error) {
         console.error('应用自定义布局失败:', error);
+        showTemporaryMessage('应用布局失败: ' + error.message, 'error');
     }
 }
 
@@ -3775,6 +3957,11 @@ function createTreeControls() {
                 <input type="checkbox" id="expand-all-nodes" checked> 展开所有节点
             </label>
         </div>
+        <div style="margin-bottom: 8px;">
+            <label>
+                <input type="checkbox" id="lock-node-collapse" ${!isNodeCollapseEnabled ? 'checked' : ''}> 锁定节点
+            </label>
+        </div>
         <div style="margin-bottom: 10px;">
             <label for="node-spacing" style="display: flex; justify-content: space-between; margin-bottom: 4px;">
                 <span>节点间距:</span>
@@ -3866,6 +4053,7 @@ function createTreeControls() {
     const nodeFontSizeCtrl = document.getElementById('node-font-size');
     const nodeFontSizeValueEl = document.getElementById('node-font-size-value');
     const expandAllNodesCtrl = document.getElementById('expand-all-nodes');
+    const lockNodeCollapseCtrl = document.getElementById('lock-node-collapse');
     const toggleControlsBtn = document.getElementById('toggle-controls');
     const minimizeIcon = document.getElementById('minimize-icon');
     const expandIcon = document.getElementById('expand-icon');
@@ -3932,10 +4120,125 @@ function createTreeControls() {
     if (expandAllNodesCtrl && myChart) {
         expandAllNodesCtrl.addEventListener('change', function() {
             if (myChart) {
-                const option = myChart.getOption();
-                option.series[0].initialTreeDepth = this.checked ? -1 : 2;
-                myChart.setOption(option);
+                try {
+                    const option = myChart.getOption();
+                    
+                    // 设置初始展开深度
+                    option.series[0].initialTreeDepth = this.checked ? -1 : 2;
+                    
+                    // 如果选中"展开所有节点"，则递归处理所有分组节点，确保它们也被展开
+                    if (this.checked) {
+                        console.log('展开所有节点，包括分组节点');
+                        
+                        // 递归处理数据，展开所有节点
+                        function expandAllGroupNodes(node) {
+                            if (!node) return;
+                            
+                            // 展开当前节点
+                            if (node.collapsed !== undefined) {
+                                node.collapsed = false;
+                            }
+                            
+                            // 处理子节点
+                            if (node.children && node.children.length > 0) {
+                                node.children.forEach(expandAllGroupNodes);
+                            }
+                        }
+                        
+                        // 如果存在数据，递归展开
+                        if (option.series[0].data && option.series[0].data.length > 0) {
+                            expandAllGroupNodes(option.series[0].data[0]);
+                            console.log('已递归展开所有节点');
+                        }
+                    }
+                    
+                    // 应用更新后的配置
+                    myChart.setOption(option);
+                    
+                    // 显示反馈消息
+                    showTemporaryMessage(
+                        this.checked ? '已展开所有节点，包括billitem_base等分组节点' : '已折叠部分节点至默认视图',
+                        'info'
+                    );
+                } catch (error) {
+                    console.error('展开/折叠所有节点时出错:', error);
+                    showTemporaryMessage('展开/折叠操作失败: ' + error.message, 'error');
+                }
             }
+        });
+    }
+    
+    // 锁定节点展开折叠选项变化事件
+    if (lockNodeCollapseCtrl) {
+        lockNodeCollapseCtrl.addEventListener('change', function() {
+            // 更新全局锁定状态变量
+            isNodeCollapseEnabled = !this.checked;
+            console.log('节点展开折叠锁定状态:', this.checked ? '已锁定' : '已解锁');
+            
+            // 如果是锁定操作，首先展开所有节点
+            if (this.checked) {
+                console.log('锁定节点前先展开所有节点');
+                
+                try {
+                    // 获取当前配置
+                    const option = myChart.getOption();
+                    
+                    // 设置初始展开深度为全部展开
+                    option.series[0].initialTreeDepth = -1;
+                    
+                    // 递归处理数据，展开所有节点
+                    function expandAllNodesBeforeLock(node) {
+                        if (!node) return;
+                        
+                        // 展开当前节点
+                        if (node.collapsed !== undefined) {
+                            node.collapsed = false;
+                        }
+                        
+                        // 处理子节点
+                        if (node.children && node.children.length > 0) {
+                            node.children.forEach(expandAllNodesBeforeLock);
+                        }
+                    }
+                    
+                    // 如果存在数据，递归展开
+                    if (option.series[0].data && option.series[0].data.length > 0) {
+                        expandAllNodesBeforeLock(option.series[0].data[0]);
+                        console.log('已在锁定前递归展开所有节点');
+                    }
+                    
+                    // 设置expandAndCollapse属性
+                    option.series[0].expandAndCollapse = isNodeCollapseEnabled;
+                    
+                    // 应用更新后的配置
+                    myChart.setOption(option);
+                    
+                    // 同步"展开所有节点"复选框状态
+                    const expandAllNodesCtrl = document.getElementById('expand-all-nodes');
+                    if (expandAllNodesCtrl && !expandAllNodesCtrl.checked) {
+                        expandAllNodesCtrl.checked = true;
+                    }
+                } catch (error) {
+                    console.error('锁定前展开所有节点时出错:', error);
+                }
+            } else {
+                // 解锁操作，恢复展开折叠功能
+                try {
+                    const option = myChart.getOption();
+                    option.series[0].expandAndCollapse = isNodeCollapseEnabled;
+                    myChart.setOption(option);
+                } catch (error) {
+                    console.error('解锁节点展开折叠功能时出错:', error);
+                }
+            }
+            
+            // 显示状态提示消息
+            showTemporaryMessage(
+                this.checked 
+                    ? '已锁定节点：已展开所有节点并禁用节点折叠功能' 
+                    : '已解锁节点：允许节点展开/折叠',
+                this.checked ? 'warning' : 'success'
+            );
         });
     }
     
