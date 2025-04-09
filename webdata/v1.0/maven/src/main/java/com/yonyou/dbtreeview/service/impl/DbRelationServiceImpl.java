@@ -424,7 +424,8 @@ public class DbRelationServiceImpl implements DbRelationService {
      * 添加billtplgroup_base子节点
      */
     private void addBillTplGroupNodes(Connection conn, DbTreeNode parentNode, String billId, String billNo, String ytenant_id,DbTreeNode entityNode) throws SQLException {
-        String sql = "SELECT id, ccode, cName FROM billtplgroup_base WHERE iBillId = ? AND iTplId = ? AND iBillEntityId = ? AND tenant_id = ?";
+        // 修改SQL查询，增加iParentId字段
+        String sql = "SELECT id, ccode, cName, iParentId FROM billtplgroup_base WHERE iBillId = ? AND iTplId = ? AND iBillEntityId = ? AND tenant_id = ?";
         
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, billId);
@@ -434,46 +435,67 @@ public class DbRelationServiceImpl implements DbRelationService {
             
             try (ResultSet rs = stmt.executeQuery()) {
                 boolean isExists = false;
+                // 创建一个Map来存储所有节点，以便后续建立父子关系
+                Map<String, DbTreeNode> groupNodesMap = new HashMap<>();
+                
+                // 第一遍遍历：创建所有节点
                 while (rs.next()) {
                     String groupId = rs.getString("id");
                     String ccode = rs.getString("ccode");
+                    String iParentId = rs.getString("iParentId");
                     
                     DbTreeNode groupNode = new DbTreeNode("billtplgroup_base", groupId);
                     groupNode.setAttribute("ccode", ccode);
                     groupNode.setAttribute("cName", rs.getString("cName"));
+                    groupNode.setAttribute("iParentId", iParentId);
                     // 传递billNo属性
                     if (billNo != null) {
                         groupNode.setAttribute("cBillNo", billNo);
                     }
                     
-                    // 添加子节点
-                    parentNode.addChild(groupNode);
+                    // 将节点添加到Map中
+                    groupNodesMap.put(groupId, groupNode);
                     isExists = true;
+                }
+                
+                // 第二遍遍历：建立父子关系
+                for (DbTreeNode groupNode : groupNodesMap.values()) {
+                    String iParentId = (String) groupNode.getAttribute("iParentId");
+                    
+                    if (iParentId != null && !iParentId.isEmpty() && groupNodesMap.containsKey(iParentId)) {
+                        // 如果有父节点，将当前节点添加为父节点的子节点
+                        DbTreeNode parentGroupNode = groupNodesMap.get(iParentId);
+                        parentGroupNode.addChild(groupNode);
+                    } else {
+                        // 如果没有父节点或父节点不存在，则添加为template节点的子节点
+                        parentNode.addChild(groupNode);
+                    }
+                    
                     // 创建按钮节点（作为billtplgroup_base的子节点）
-                    DbTreeNode buttonNode = new DbTreeNode("按钮", "button_" + groupId);
+                    DbTreeNode buttonNode = new DbTreeNode("按钮", "button_" + groupNode.getId());
                     buttonNode.setAttribute("cName", "按钮");
                     // 传递billNo和ccode属性
                     if (billNo != null) {
                         buttonNode.setAttribute("cBillNo", billNo);
                     }
-                    buttonNode.setAttribute("ccode", ccode);
+                    buttonNode.setAttribute("ccode", (String) groupNode.getAttribute("ccode"));
                     
                     // 添加bill_toolbar子节点（作为按钮的子节点）
-                    addBillToolbarNodes(conn, buttonNode, ccode, billNo, ytenant_id, groupNode);
+                    addBillToolbarNodes(conn, buttonNode, (String) groupNode.getAttribute("ccode"), billNo, ytenant_id, groupNode);
                     
                     // 创建billitem_base节点（作为billtplgroup_base的子节点）
-                    DbTreeNode itemsNode = new DbTreeNode("billitem_base", "billitem_" + groupId);
+                    DbTreeNode itemsNode = new DbTreeNode("billitem_base", "billitem_" + groupNode.getId());
                     itemsNode.setAttribute("cName", "billitem_base");
                     // 传递billNo属性
                     if (billNo != null) {
                         itemsNode.setAttribute("cBillNo", billNo);
-                        itemsNode.setAttribute("groupId", groupId);
+                        itemsNode.setAttribute("groupId", groupNode.getId());
                     }
-//                    groupNode.addChild(itemsNode);
                     
                     // 添加实际的billitem_base子节点
                     addBillItemNodes(conn, itemsNode, billId, ytenant_id, groupNode);
                 }
+                
                 if (isExists){
                     entityNode.addChild(parentNode);
                 }
