@@ -101,7 +101,7 @@
             position: relative;
             box-shadow: var(--shadow-sm);
             display: flex;
-            flex-wrap: nowrap;
+            flex-wrap: wrap; /* 修改为wrap允许在窄屏幕上换行 */
             align-items: center;
             gap: 16px;
             border-radius: 0 0 var(--radius-md) var(--radius-md);
@@ -183,6 +183,7 @@
             display: flex;
             gap: 12px;
             flex-shrink: 0;
+            margin-left: auto; /* 在窄屏幕上保持按钮的对齐方式 */
         }
         
         .button {
@@ -228,15 +229,17 @@
         /* 加载指示器样式 */
         .loading {
             position: absolute;
-            top: 12px;
-            right: 24px;
+            top: 60px; /* 修改：将位置从顶部12px改为60px，放在标题下方 */
+            left: 20px; /* 修改：从右侧改为左侧 */
             display: none;
             color: var(--accent-color);
-            background-color: rgba(59, 130, 246, 0.1);
+            background-color: rgba(59, 130, 246, 0.2); /* 修改：略微增加背景不透明度 */
             padding: 6px 12px;
             border-radius: var(--radius-sm);
             font-size: 13px;
             animation: fadeIn 0.3s ease;
+            z-index: 50; /* 添加：确保显示在最上层 */
+            box-shadow: var(--shadow-md); /* 添加：增加阴影效果提高可见度 */
         }
         
         @keyframes fadeIn {
@@ -1498,6 +1501,49 @@
             align-items: center;
             padding: 0 15px;
             height: 32px;
+        }
+        
+        /* 添加响应式设计的媒体查询 */
+        @media screen and (max-width: 1200px) {
+            .header-container {
+                padding: 10px 15px;
+            }
+            
+            .input-area {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            
+            .input-group {
+                min-width: 180px;
+            }
+            
+            .button-group {
+                margin-left: 0;
+                width: 100%;
+                justify-content: flex-end;
+            }
+        }
+        
+        @media screen and (max-width: 768px) {
+            .header-container {
+                padding: 8px 12px;
+            }
+            
+            .page-title {
+                width: 100%;
+                margin-bottom: 8px;
+            }
+            
+            .input-group {
+                width: 100%;
+            }
+            
+            .button-group {
+                width: 100%;
+                justify-content: center;
+                margin-top: 10px;
+            }
         }
     </style>
 </head>
