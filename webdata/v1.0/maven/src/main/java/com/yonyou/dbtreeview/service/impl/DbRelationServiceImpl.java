@@ -116,7 +116,9 @@ public class DbRelationServiceImpl implements DbRelationService {
                 if (fieldCount > 0) {
                     sqlBuilder.append(", ");
                 }
-                
+                if (fieldName.equals("order")){
+                    fieldName = "`order`";
+                }
                 // 防止SQL注入，使用占位符
                 sqlBuilder.append(fieldName).append(" = ?");
                 fieldCount++;
