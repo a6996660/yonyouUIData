@@ -163,7 +163,14 @@ public class DbRelationServiceImpl implements DbRelationService {
                 int paramIndex = 1;
                 for (String fieldName : editedFields.keySet()) {
                     Object value = editedFields.get(fieldName);
-                    stmt.setObject(paramIndex++, value);
+                    
+                    // 为bit类型字段进行特殊处理
+                    if (value.equals("true") || value.equals("false")) {
+                        // 对于bit(1)类型的字段，使用setBoolean
+                        stmt.setBoolean(paramIndex++, value.equals("true"));
+                    } else {
+                        stmt.setObject(paramIndex++, value);
+                    }
                 }
                 
                 // 设置WHERE条件参数
