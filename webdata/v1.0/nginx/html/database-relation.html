@@ -126,7 +126,7 @@
             align-items: center;
             flex-grow: 1;
             gap: 12px;
-            justify-content: space-between; /* 添加此行以确保在不同分辨率下正确排列 */
+            justify-content: flex-start; /* 改为左对齐 */
         }
         
         .input-group {
@@ -135,15 +135,19 @@
             margin: 0;
             flex-shrink: 1;
             position: relative;
-            min-width: 200px; /* 设置最小宽度以防止错位 */
+            min-width: 180px; /* 减小最小宽度 */
+            flex: 1 1 auto; /* 添加flex属性使元素能够更均匀分布 */
+            max-width: 250px; /* 限制最大宽度 */
         }
         
         .input-group label {
             white-space: nowrap;
-            margin-right: 6px;
+            margin-right: 8px; /* 增加标签右侧间距 */
             font-size: 13px;
             color: var(--text-secondary);
             font-weight: 500;
+            min-width: 70px; /* 统一标签宽度 */
+            text-align: right; /* 标签右对齐 */
         }
         
         .input-field, .select-field {
@@ -184,6 +188,7 @@
             gap: 12px;
             flex-shrink: 0;
             margin-left: auto; /* 在窄屏幕上保持按钮的对齐方式 */
+            padding-left: 8px; /* 添加左侧内边距 */
         }
         
         .button {
@@ -1511,17 +1516,20 @@
             
             .input-area {
                 flex-wrap: wrap;
-                gap: 8px;
+                gap: 10px 15px; /* 调整行列间距 */
             }
             
             .input-group {
                 min-width: 180px;
+                max-width: none; /* 移除最大宽度限制 */
+                flex: 1 1 calc(50% - 15px); /* 在中等屏幕上每行两个元素 */
             }
             
             .button-group {
                 margin-left: 0;
-                width: 100%;
+                flex: 0 0 100%; /* 按钮组占满一行 */
                 justify-content: flex-end;
+                padding-top: 8px; /* 添加顶部内边距 */
             }
         }
         
@@ -1532,18 +1540,56 @@
             
             .page-title {
                 width: 100%;
-                margin-bottom: 8px;
+                margin-bottom: 10px;
+                text-align: center;
+            }
+            
+            .input-area {
+                gap: 8px;
             }
             
             .input-group {
                 width: 100%;
+                max-width: none;
+                flex: 0 0 100%; /* 在小屏幕上每个输入组占满一行 */
+            }
+            
+            .input-group label {
+                min-width: 80px; /* 增加标签宽度，保持对齐 */
+            }
+            
+            .database-select-container {
+                max-width: none;
+            }
+            
+            #ytenant_id {
+                max-width: none; /* 移除最大宽度限制 */
             }
             
             .button-group {
                 width: 100%;
                 justify-content: center;
-                margin-top: 10px;
+                margin-top: 12px;
             }
+        }
+        
+        /* 为数据库和表单编码输入组添加特殊样式 */
+        .database-select-container {
+            min-width: 220px; /* 略微增加宽度 */
+            max-width: 300px;
+        }
+        
+        /* 租户ID输入框样式优化 */
+        #ytenant_id {
+            max-width: 120px; /* 限制租户ID输入框宽度 */
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 12px;
+            flex-shrink: 0;
+            margin-left: auto; /* 在窄屏幕上保持按钮的对齐方式 */
+            padding-left: 8px; /* 添加左侧内边距 */
         }
     </style>
 </head>
