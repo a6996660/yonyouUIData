@@ -1638,6 +1638,23 @@
             background-color: rgba(59, 130, 246, 0.2);
             border-color: var(--accent-color);
         }
+        
+        /* 当前查询高亮样式 */
+        .current-query {
+            background-color: rgba(59, 130, 246, 0.3);
+            border-color: var(--accent-color);
+            border-width: 2px;
+            font-weight: 500;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        
+        .current-query::before {
+            content: "✓";
+            margin-right: 4px;
+            color: var(--accent-color);
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>

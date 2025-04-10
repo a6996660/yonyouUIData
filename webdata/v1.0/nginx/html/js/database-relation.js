@@ -34,6 +34,14 @@ let billNoList = [];
 // 节点折叠展开锁定标志 - 控制是否允许节点展开折叠
 let isNodeCollapseEnabled = true; 
 
+// 当前查询信息
+let currentQuery = {
+    environment: '',
+    dbName: '',
+    billNo: '',
+    ytenant_id: '0'
+};
+
 // 数据库配置存储
 let dbConfigs = {
     test: { host: '', port: '', username: '', password: '' },
@@ -267,6 +275,14 @@ async function performSearch() {
     const dbName = dbNameInput.value.trim();
     const billNo = tableCodeInput.value.trim();
     const ytenant_id = document.getElementById('ytenant_id').value.trim() || "0"; // 获取租户ID，默认为0
+    
+    // 更新当前查询信息
+    currentQuery = {
+        environment,
+        dbName,
+        billNo,
+        ytenant_id
+    };
     
     // 验证输入
     if (!dbName) {
@@ -4614,6 +4630,18 @@ function loadQueryHistory() {
             const historyItem = document.createElement('div');
             historyItem.className = 'history-item';
             
+            // 检查是否为当前查询
+            const isCurrentQuery = 
+                item.environment === currentQuery.environment && 
+                item.dbName === currentQuery.dbName && 
+                item.billNo === currentQuery.billNo && 
+                (item.ytenant_id || "0") === (currentQuery.ytenant_id || "0");
+            
+            // 如果是当前查询，添加高亮样式
+            if (isCurrentQuery) {
+                historyItem.classList.add('current-query');
+            }
+            
             // 显示格式：环境-数据库-表单编码
             historyItem.textContent = `${getEnvironmentLabel(item.environment)} | ${item.dbName} | ${item.billNo}`;
             
@@ -4666,6 +4694,14 @@ async function restoreQueryFromHistory(historyItem) {
         if (document.getElementById('ytenant_id')) {
             document.getElementById('ytenant_id').value = historyItem.ytenant_id || "0";
         }
+        
+        // 更新当前查询信息（在执行搜索前）
+        currentQuery = {
+            environment: historyItem.environment,
+            dbName: historyItem.dbName,
+            billNo: historyItem.billNo,
+            ytenant_id: historyItem.ytenant_id || "0"
+        };
         
         // 执行搜索
         await performSearch();
