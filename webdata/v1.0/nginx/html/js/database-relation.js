@@ -257,30 +257,39 @@ function initEventListeners() {
 }
 
 /**
- * 执行搜索，获取并展示树形图
+ * 执行搜索操作
  */
 async function performSearch() {
+    // 获取搜索参数
     const environment = dbEnvironmentSelect.value;
     const dbName = dbNameInput.value.trim();
     const billNo = tableCodeInput.value.trim();
-    const ytenant_id = document.getElementById('ytenant_id').value.trim() || "0"; // 获取租户ID，默认为0
+    const ytenant_id = document.getElementById('tenantId') ? document.getElementById('tenantId').value.trim() : '';
     
-    // 验证输入
+    // 参数验证
     if (!dbName) {
-        alert('请选择数据库！');
-        dbNameSearchInput.focus();
+        alert('请输入数据库名称');
         return;
     }
     
     if (!billNo) {
-        alert('请选择表单编码！');
-        tableCodeSearchInput.focus();
+        alert('请输入表单编码');
+        return;
+    }
+    
+    // 获取数据库配置
+    const dbConfig = getDbConfig();
+    if (!dbConfig) {
+        alert('请先设置数据库连接配置');
+        openConfigModal();
         return;
     }
     
     try {
-        // 显示加载指示器
-        loadingIndicator.style.display = 'block';
+        // 显示加载中状态
+        loadingIndicator.style.display = 'flex';
+        searchButton.disabled = true;
+        hideNodeDetails();
         
         // 展开图谱容器
         graphContainer.classList.add('show-graph');
@@ -288,78 +297,148 @@ async function performSearch() {
         // 初始化图表
         initializeCharts();
         
-        // 获取当前环境的数据库配置
-        const currentDbConfig = dbConfigs[environment];
+        // 调用API获取数据
+        const treeData = await window.fetchDbRelationTree(
+            environment,
+            dbName,
+            billNo,
+            dbConfig,
+            ytenant_id
+        );
         
-        try {
-            // 调用API获取树形数据
-            const treeData = await fetchDbRelationTree(
-                environment, 
-                dbName, 
-                billNo, 
-                currentDbConfig,
-                ytenant_id  // 添加租户ID参数
-            );
-            
-            // 隐藏加载指示器
-            loadingIndicator.style.display = 'none';
-            
-            // 打印API返回数据
-            console.log('API返回的原始数据:', treeData);
-            
-            // 确保transformToEChartsFormat函数存在
-            if (typeof transformToEChartsFormat !== 'function') {
-                console.error('transformToEChartsFormat函数未定义，请检查database-relation-api.js文件是否正确加载');
-                // 尝试使用模拟数据
-                const mockData = generateMockData(billNo);
-                renderGraph(mockData);
-                
-                // 确保节点搜索容器可见
-                setTimeout(ensureNodeSearchContainerVisible, 1000);
-                
-                // 确保控制浮窗可见
-                setTimeout(ensureTreeControlsVisible, 1000);
-                return;
-            }
-            
-            // 转换数据格式
-            const formattedData = transformToEChartsFormat(treeData);
-            console.log('转换后的图表数据:', formattedData);
-            
-            // 渲染图表
-            renderGraph(formattedData);
-            
-            // 确保节点搜索容器可见
-            setTimeout(ensureNodeSearchContainerVisible, 1000);
-            
-            // 确保控制浮窗可见
-            setTimeout(ensureTreeControlsVisible, 1000);
-        } catch (error) {
-            console.error('API调用失败:', error);
-            loadingIndicator.style.display = 'none';
-            
-            // 尝试使用模拟数据
-            const mockData = generateMockData(billNo);
-            renderGraph(mockData);
-            
-            // 确保节点搜索容器可见
-            setTimeout(ensureNodeSearchContainerVisible, 1000);
-            
-            // 确保控制浮窗可见
-            setTimeout(ensureTreeControlsVisible, 1000);
-        }
+        // 保存当前查询到历史记录
+        window.saveQueryHistory({
+            environment,
+            dbName,
+            billNo,
+            ytenant_id
+        });
+        
+        // 更新查询历史显示
+        loadQueryHistory();
+        
+        // 转换数据格式
+        const formattedData = window.transformToEChartsFormat(treeData);
+        console.log('转换后的图表数据:', formattedData);
+        
+        // 获取成功，渲染图表
+        renderGraph(formattedData);
+        
+        // 确保节点搜索容器可见
+        setTimeout(ensureNodeSearchContainerVisible, 1000);
+        
+        // 确保控制浮窗可见
+        setTimeout(ensureTreeControlsVisible, 1000);
+        
     } catch (error) {
-        console.error('搜索失败:', error);
-        loadingIndicator.style.display = 'none';
-        alert(`搜索失败: ${error.message}`);
+        console.error('获取数据失败:', error);
+        clearAndShowError(graphContainer, `获取数据失败: ${error.message}`);
         
         // 即使失败也确保搜索容器可见
         setTimeout(ensureNodeSearchContainerVisible, 1000);
         
         // 即使失败也确保控制浮窗可见
         setTimeout(ensureTreeControlsVisible, 1000);
+    } finally {
+        // 隐藏加载中状态
+        loadingIndicator.style.display = 'none';
+        searchButton.disabled = false;
     }
 }
+
+/**
+ * 加载并显示查询历史
+ */
+function loadQueryHistory() {
+    try {
+        const historyContainer = document.getElementById('history-container');
+        if (!historyContainer) return;
+        
+        // 获取查询历史
+        const history = window.getQueryHistory();
+        
+        // 如果没有历史记录，隐藏容器
+        if (!history || history.length === 0) {
+            historyContainer.style.display = 'none';
+            return;
+        }
+        
+        // 清空现有历史记录
+        // 保留第一个子元素（标题）
+        const historyTitle = historyContainer.querySelector('.history-title');
+        historyContainer.innerHTML = '';
+        historyContainer.appendChild(historyTitle);
+        
+        // 添加历史记录项
+        history.forEach(item => {
+            const historyItem = document.createElement('div');
+            historyItem.className = 'history-item';
+            
+            // 显示格式：环境-数据库-表单编码
+            historyItem.textContent = `${getEnvironmentLabel(item.environment)} | ${item.dbName} | ${item.billNo}`;
+            
+            // 点击历史记录项时加载该查询
+            historyItem.addEventListener('click', () => {
+                restoreQueryFromHistory(item);
+            });
+            
+            // 添加到容器
+            historyContainer.appendChild(historyItem);
+        });
+        
+        // 显示历史记录容器
+        historyContainer.style.display = 'flex';
+        
+    } catch (error) {
+        console.error('加载查询历史失败:', error);
+    }
+}
+
+/**
+ * 根据环境代码获取显示标签
+ * 
+ * @param {string} environment 环境代码
+ * @returns {string} 环境显示标签
+ */
+function getEnvironmentLabel(environment) {
+    const labels = {
+        'test': '测试',
+        'daily': '日常',
+        'pre': '预发',
+        'other': '其他'
+    };
+    return labels[environment] || environment;
+}
+
+/**
+ * 从历史记录恢复查询
+ * 
+ * @param {Object} historyItem 历史记录项
+ */
+async function restoreQueryFromHistory(historyItem) {
+    try {
+        // 设置表单值
+        dbEnvironmentSelect.value = historyItem.environment;
+        dbNameInput.value = historyItem.dbName;
+        tableCodeInput.value = historyItem.billNo;
+        
+        // 如果存在租户ID输入框，设置其值
+        if (document.getElementById('tenantId')) {
+            document.getElementById('tenantId').value = historyItem.ytenant_id || '';
+        }
+        
+        // 执行搜索
+        await performSearch();
+    } catch (error) {
+        console.error('恢复历史查询失败:', error);
+        alert('恢复历史查询失败: ' + error.message);
+    }
+}
+
+// 页面加载时初始化查询历史
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(loadQueryHistory, 500); // 延迟加载以确保DOM已完全加载
+});
 
 /**
  * 渲染树形关系图表

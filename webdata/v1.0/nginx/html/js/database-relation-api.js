@@ -23,6 +23,8 @@ window.saveDbConfigsToServer = saveDbConfigsToServer;
 window.fetchDbConfigsFromServer = fetchDbConfigsFromServer;
 window.fetchDatabaseList = fetchDatabaseList;
 window.fetchBillNoList = fetchBillNoList;
+window.saveQueryHistory = saveQueryHistory;
+window.getQueryHistory = getQueryHistory;
 
 /**
  * 获取数据库表关联树形结构
@@ -671,5 +673,77 @@ async function fetchBillNoList(environment, dbName, ytenant_id, dbConfig) {
     } catch (error) {
         console.error('获取表单编码列表失败:', error);
         throw error;
+    }
+}
+
+/**
+ * 保存查询历史到localStorage
+ * 
+ * @param {Object} queryParams 查询参数
+ * @param {string} queryParams.environment 环境
+ * @param {string} queryParams.dbName 数据库名称
+ * @param {string} queryParams.billNo 表单编码
+ * @param {string} queryParams.ytenant_id 租户ID
+ * @returns {void}
+ */
+function saveQueryHistory(queryParams) {
+    try {
+        // 获取现有的历史记录
+        const history = getQueryHistory();
+        
+        // 创建新的历史记录项
+        const newItem = {
+            id: new Date().getTime(), // 使用时间戳作为唯一ID
+            timestamp: new Date().toISOString(),
+            environment: queryParams.environment,
+            dbName: queryParams.dbName,
+            billNo: queryParams.billNo,
+            ytenant_id: queryParams.ytenant_id || ''
+        };
+        
+        // 检查是否已存在相同的查询
+        const existingIndex = history.findIndex(item => 
+            item.environment === newItem.environment && 
+            item.dbName === newItem.dbName && 
+            item.billNo === newItem.billNo && 
+            item.ytenant_id === newItem.ytenant_id
+        );
+        
+        // 如果存在相同查询，则删除旧的
+        if (existingIndex !== -1) {
+            history.splice(existingIndex, 1);
+        }
+        
+        // 将新记录添加到开头
+        history.unshift(newItem);
+        
+        // 只保留最近的5条记录
+        const updatedHistory = history.slice(0, 5);
+        
+        // 保存到localStorage
+        localStorage.setItem('queryHistory', JSON.stringify(updatedHistory));
+        
+        console.log('查询历史已保存', updatedHistory);
+        
+    } catch (error) {
+        console.error('保存查询历史失败:', error);
+    }
+}
+
+/**
+ * 从localStorage获取查询历史
+ * 
+ * @returns {Array} 查询历史记录数组
+ */
+function getQueryHistory() {
+    try {
+        const historyString = localStorage.getItem('queryHistory');
+        if (!historyString) {
+            return [];
+        }
+        return JSON.parse(historyString);
+    } catch (error) {
+        console.error('获取查询历史失败:', error);
+        return [];
     }
 } 

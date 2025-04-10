@@ -1591,6 +1591,53 @@
             margin-left: auto; /* 在窄屏幕上保持按钮的对齐方式 */
             padding-left: 8px; /* 添加左侧内边距 */
         }
+        
+        /* 查询历史样式 */
+        .history-container {
+            width: 100%;
+            background-color: var(--secondary-bg);
+            padding: 10px 24px;
+            display: none;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .history-title {
+            font-size: 13px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            margin-right: 12px;
+            font-weight: 500;
+        }
+
+        .history-item {
+            background-color: var(--tertiary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 6px 12px;
+            font-size: 12px;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: flex;
+            align-items: center;
+            max-width: 350px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .history-item:hover {
+            background-color: var(--input-bg);
+            border-color: var(--accent-color);
+            transform: translateY(-1px);
+        }
+
+        .history-item-active {
+            background-color: rgba(59, 130, 246, 0.2);
+            border-color: var(--accent-color);
+        }
     </style>
 </head>
 <body>
@@ -1647,6 +1694,17 @@
             <div class="loading" id="loadingIndicator">
                 <span class="loading-spinner"></span> 正在生成树形关系图...
             </div>
+        </div>
+        
+        <!-- 查询历史 -->
+        <div class="history-container" id="history-container">
+            <div class="history-title">最近查询:</div>
+            <!-- 历史条目将通过JavaScript动态添加 -->
+        </div>
+        
+        <!-- 加载指示器 -->
+        <div id="loading" class="loading">
+            <span class="loading-spinner"></span> 正在生成树形关系图...
         </div>
         
         <!-- 图谱展示容器 -->
