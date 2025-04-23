@@ -434,7 +434,7 @@ public class DbRelationServiceImpl implements DbRelationService {
      */
     private void addBillTplGroupNodes(Connection conn, DbTreeNode parentNode, String billId, String billNo, String ytenant_id,DbTreeNode entityNode) throws SQLException {
         // 修改SQL查询，增加iParentId字段
-        String sql = "SELECT id, ccode, cName, iParentId FROM billtplgroup_base WHERE iBillId = ? AND iTplId = ? AND iBillEntityId = ? AND tenant_id = ?";
+        String sql = "SELECT id, ccode, cName, iParentId FROM billtplgroup_base WHERE iBillId = ? AND iTplId = ? AND iBillEntityId = ? AND tenant_id = ? ORDER BY iOrder";
         
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, billId);
@@ -516,7 +516,7 @@ public class DbRelationServiceImpl implements DbRelationService {
      * 添加billitem_base子节点
      */
     private void addBillItemNodes(Connection conn, DbTreeNode parentNode, String billId, String ytenant_id,DbTreeNode groupNode ) throws SQLException {
-        String sql = "SELECT * FROM billitem_base WHERE iBillId = ? AND iBillTplGroupId = ? AND tenant_id = ?";
+        String sql = "SELECT * FROM billitem_base WHERE iBillId = ? AND iBillTplGroupId = ? AND tenant_id = ? ORDER BY iOrder";
         
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, billId);
@@ -592,7 +592,7 @@ public class DbRelationServiceImpl implements DbRelationService {
         }
         
         if (billNo != null) {
-            String sql = "SELECT id, name, command,text FROM bill_toolbaritem WHERE billnumber = ? AND toolbar = ? AND tenant_id = ?";
+            String sql = "SELECT id, name, command,text FROM bill_toolbaritem WHERE billnumber = ? AND toolbar = ? AND tenant_id = ? ORDER BY `order`";
             
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setString(1, billNo);
