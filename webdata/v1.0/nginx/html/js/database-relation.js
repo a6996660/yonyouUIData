@@ -224,6 +224,13 @@ function initEventListeners() {
         if (myChart) {
             myChart.resize();
         }
+        
+        // 如果详情浮窗正在显示，则更新其宽度
+        if (nodeDetails && nodeDetails.style.display === 'block') {
+            const viewWidth = window.innerWidth;
+            const detailsWidth = Math.max(350, Math.floor(viewWidth / 4));
+            nodeDetails.style.width = `${detailsWidth}px`;
+        }
     });
     
     // 树形图布局控制
@@ -1274,7 +1281,9 @@ function showNodeDetails(details) {
     
     // 计算位置 - 将详情面板显示在右侧
     const containerRect = graphContainer.getBoundingClientRect();
-    const detailsWidth = 350; // 详情面板宽度增加以适应更多内容
+    // 将详情面板宽度从固定值修改为页面宽度的四分之一
+    const viewWidth = window.innerWidth;
+    const detailsWidth = Math.max(350, Math.floor(viewWidth / 4)); // 保证最小宽度为350px
     
     // 设置位置 - 距离右侧10px
     nodeDetails.style.position = 'absolute';

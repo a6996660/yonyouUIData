@@ -511,7 +511,7 @@
         .node-details table {
             width: 100%;
             border-collapse: collapse; /* 改为collapse，消除单元格间距 */
-            table-layout: fixed;
+            table-layout: fixed; /* 确保使用固定布局 */
             border-radius: var(--radius-sm); /* 减小圆角 */
             overflow: hidden;
             border: 1px solid var(--border-color);
@@ -522,6 +522,7 @@
             padding: 6px 12px; /* 减小内边距 */
             text-align: left;
             font-size: 13px;
+            box-sizing: border-box; /* 确保内边距计入宽度 */
         }
         
         .node-details th {
@@ -789,9 +790,14 @@
             background-color: rgba(59, 130, 246, 0.05) !important;
         }
         
-        /* 非匹配行暂时隐藏 */
+        /* 非匹配行样式 */
         .field-hidden {
-            display: none;
+            visibility: hidden !important;
+            position: absolute !important;
+            height: 0 !important;
+            overflow: hidden !important;
+            opacity: 0 !important;
+            /* 保留单元格宽度以保持表格布局一致 */
         }
         
         /* 无结果提示 */
@@ -2705,7 +2711,9 @@
                     row.classList.remove('field-hidden', 'field-match', 'field-priority-high', 'field-priority-medium', 'field-priority-low');
                     // 使用动画淡入效果
                     row.style.opacity = '0';
-                    row.style.display = '';
+                    row.style.visibility = 'visible'; // 使用visibility而非display确保表格布局一致
+                    row.style.height = '';
+                    row.style.position = '';
                     setTimeout(() => {
                         row.style.transition = 'opacity 0.2s ease-in-out';
                         row.style.opacity = '1';
@@ -2773,9 +2781,14 @@
             });
             
             // 应用匹配结果
-            // 先隐藏所有行
+            // 先处理所有行，但不是隐藏，而是降低透明度和使用其他CSS属性保持布局
             rows.forEach(row => {
-                row.style.display = 'none';
+                // 保持行占据空间但不可见，保持表格布局一致
+                row.style.visibility = 'hidden';
+                row.style.opacity = '0';
+                row.style.position = 'absolute'; // 将不匹配的行脱离文档流
+                row.style.height = '0';
+                row.style.overflow = 'hidden';
             });
             
             // 显示匹配的行
@@ -2796,10 +2809,13 @@
                 
                 row.classList.add('field-match');
                 
-                // 应用动画效果，错开时间
+                // 恢复行到正常文档流，使其可见
+                row.style.visibility = 'visible';
+                row.style.position = '';
+                row.style.height = '';
+                row.style.overflow = '';
                 row.style.opacity = '0';
                 row.style.transform = 'translateY(10px)';
-                row.style.display = '';
                 
                 setTimeout(() => {
                     row.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
