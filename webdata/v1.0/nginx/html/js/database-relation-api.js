@@ -17,6 +17,7 @@ function getApiEndpoint() {
 // 导出API函数
 window.getApiEndpoint = getApiEndpoint;
 window.fetchDbRelationTree = fetchDbRelationTree;
+window.fetchDbRelationTreeWithEntity = fetchDbRelationTreeWithEntity;
 window.fetchTableDetails = fetchTableDetails;
 window.updateTableData = updateTableData;
 window.saveDbConfigsToServer = saveDbConfigsToServer;
@@ -78,6 +79,62 @@ async function fetchDbRelationTree(environment, dbName, billNo, dbConfig, ytenan
         return data.data;
     } catch (error) {
         console.error('获取数据库关联树失败:', error);
+        throw error;
+    }
+}
+
+/**
+ * 获取包含实体表的数据库表关联树形结构
+ * 
+ * @param {string} environment 环境（测试、日常、预发）
+ * @param {string} dbName 数据库名称
+ * @param {string} billNo 表单编码
+ * @param {Object} dbConfig 数据库配置信息
+ * @param {string} ytenant_id 租户ID
+ * @returns {Promise} 返回包含实体表的表关联数据
+ */
+async function fetchDbRelationTreeWithEntity(environment, dbName, billNo, dbConfig, ytenant_id) {
+    try {
+        const url = `${API_BASE_URL}/db-relation/tree-with-entity`;
+        
+        const requestData = {
+            environment: environment,
+            dbName: dbName,
+            billNo: billNo,
+            ytenant_id: ytenant_id,
+            dbConfig: dbConfig
+        };
+        
+        console.log("请求数据(含实体表):", requestData);
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        if (!response.ok) {
+            let errorData;
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                errorData = { message: '未知错误' };
+            }
+            console.error("API错误响应:", errorData);
+            throw new Error(`API请求失败: ${response.status} - ${JSON.stringify(errorData)}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.code !== '0000') {
+            throw new Error(data.message || '获取包含实体表的数据库关联树失败');
+        }
+        
+        return data.data;
+    } catch (error) {
+        console.error('获取包含实体表的数据库关联树失败:', error);
         throw error;
     }
 }
@@ -684,6 +741,7 @@ async function fetchBillNoList(environment, dbName, ytenant_id, dbConfig) {
  * @param {string} queryParams.dbName 数据库名称
  * @param {string} queryParams.billNo 表单编码
  * @param {string} queryParams.ytenant_id 租户ID
+ * @param {boolean} queryParams.showEntityTables 是否显示实体表
  * @returns {void}
  */
 function saveQueryHistory(queryParams) {
@@ -698,7 +756,8 @@ function saveQueryHistory(queryParams) {
             environment: queryParams.environment,
             dbName: queryParams.dbName,
             billNo: queryParams.billNo,
-            ytenant_id: queryParams.ytenant_id || ''
+            ytenant_id: queryParams.ytenant_id || '',
+            showEntityTables: queryParams.showEntityTables || false
         };
         
         // 检查是否已存在相同的查询
@@ -706,7 +765,8 @@ function saveQueryHistory(queryParams) {
             item.environment === newItem.environment && 
             item.dbName === newItem.dbName && 
             item.billNo === newItem.billNo && 
-            item.ytenant_id === newItem.ytenant_id
+            item.ytenant_id === newItem.ytenant_id &&
+            item.showEntityTables === newItem.showEntityTables
         );
         
         // 如果存在相同查询，则删除旧的

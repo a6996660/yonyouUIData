@@ -39,7 +39,8 @@ let currentQuery = {
     environment: '',
     dbName: '',
     billNo: '',
-    ytenant_id: '0'
+    ytenant_id: '0',
+    showEntityTables: false // 添加显示实体表属性并设置默认值为false
 };
 
 // 数据库配置存储
@@ -282,13 +283,15 @@ async function performSearch() {
     const dbName = dbNameInput.value.trim();
     const billNo = tableCodeInput.value.trim();
     const ytenant_id = document.getElementById('ytenant_id').value.trim() || "0"; // 获取租户ID，默认为0
+    const showEntityTables = document.getElementById('show-entity-tables').checked; // 获取"显示实体表"复选框状态
     
     // 更新当前查询信息
     currentQuery = {
         environment,
         dbName,
         billNo,
-        ytenant_id
+        ytenant_id,
+        showEntityTables
     };
     
     // 验证输入
@@ -321,14 +324,29 @@ async function performSearch() {
         const currentDbConfig = dbConfigs[environment];
         
         try {
-            // 调用API获取树形数据
-            const treeData = await fetchDbRelationTree(
-                environment, 
-                dbName, 
-                billNo, 
-                currentDbConfig,
-                ytenant_id  // 添加租户ID参数
-            );
+            // 根据"显示实体表"选项状态调用不同的API
+            let treeData;
+            if (showEntityTables) {
+                console.log('调用包含实体表的API...');
+                // 调用带实体表的API
+                treeData = await fetchDbRelationTreeWithEntity(
+                    environment, 
+                    dbName, 
+                    billNo, 
+                    currentDbConfig,
+                    ytenant_id
+                );
+            } else {
+                console.log('调用标准API...');
+                // 调用标准API
+                treeData = await fetchDbRelationTree(
+                    environment, 
+                    dbName, 
+                    billNo, 
+                    currentDbConfig,
+                    ytenant_id
+                );
+            }
             
             // 隐藏加载指示器
             loadingIndicator.style.display = 'none';
@@ -347,7 +365,8 @@ async function performSearch() {
                     environment,
                     dbName,
                     billNo,
-                    ytenant_id
+                    ytenant_id,
+                    showEntityTables
                 });
                 
                 // 更新历史记录显示
@@ -372,7 +391,8 @@ async function performSearch() {
                 environment,
                 dbName,
                 billNo,
-                ytenant_id
+                ytenant_id,
+                showEntityTables
             });
             
             // 更新查询历史显示
@@ -398,7 +418,8 @@ async function performSearch() {
                 environment,
                 dbName,
                 billNo,
-                ytenant_id
+                ytenant_id,
+                showEntityTables
             });
             
             // 更新历史记录显示
@@ -4135,6 +4156,11 @@ function createTreeControls() {
                 <input type="checkbox" id="lock-node-collapse" ${!isNodeCollapseEnabled ? 'checked' : ''}> 锁定节点
             </label>
         </div>
+        <div style="margin-bottom: 8px;">
+            <label>
+                <input type="checkbox" id="show-entity-tables" ${currentQuery && currentQuery.showEntityTables ? 'checked' : ''}> 显示实体表
+            </label>
+        </div>
         <div style="margin-bottom: 10px;">
             <label for="node-spacing" style="display: flex; justify-content: space-between; margin-bottom: 4px;">
                 <span>节点间距:</span>
@@ -4227,6 +4253,7 @@ function createTreeControls() {
     const nodeFontSizeValueEl = document.getElementById('node-font-size-value');
     const expandAllNodesCtrl = document.getElementById('expand-all-nodes');
     const lockNodeCollapseCtrl = document.getElementById('lock-node-collapse');
+    const showEntityTablesCtrl = document.getElementById('show-entity-tables');
     const toggleControlsBtn = document.getElementById('toggle-controls');
     const minimizeIcon = document.getElementById('minimize-icon');
     const expandIcon = document.getElementById('expand-icon');
@@ -4249,6 +4276,20 @@ function createTreeControls() {
                 expandIcon.style.display = 'block';
                 isMinimized = true;
             }
+        });
+    }
+    
+    // "显示实体表"复选框变化事件
+    if (showEntityTablesCtrl) {
+        showEntityTablesCtrl.addEventListener('change', function() {
+            console.log('显示实体表选项变化:', this.checked ? '显示' : '不显示');
+            // 选项变化时不会自动执行查询，仅在下次查询时生效
+            showTemporaryMessage(
+                this.checked 
+                    ? '已选择显示实体表，点击查询按钮后生效' 
+                    : '已取消显示实体表，点击查询按钮后生效',
+                'info'
+            );
         });
     }
     
@@ -4644,7 +4685,8 @@ function loadQueryHistory() {
                 item.environment === currentQuery.environment && 
                 item.dbName === currentQuery.dbName && 
                 item.billNo === currentQuery.billNo && 
-                (item.ytenant_id || "0") === (currentQuery.ytenant_id || "0");
+                (item.ytenant_id || "0") === (currentQuery.ytenant_id || "0") &&
+                (!!item.showEntityTables) === (!!currentQuery.showEntityTables);
             
             // 如果是当前查询，添加高亮样式
             if (isCurrentQuery) {
@@ -4704,12 +4746,19 @@ async function restoreQueryFromHistory(historyItem) {
             document.getElementById('ytenant_id').value = historyItem.ytenant_id || "0";
         }
         
+        // 设置"显示实体表"复选框状态
+        const showEntityTablesCheckbox = document.getElementById('show-entity-tables');
+        if (showEntityTablesCheckbox) {
+            showEntityTablesCheckbox.checked = !!historyItem.showEntityTables;
+        }
+        
         // 更新当前查询信息（在执行搜索前）
         currentQuery = {
             environment: historyItem.environment,
             dbName: historyItem.dbName,
             billNo: historyItem.billNo,
-            ytenant_id: historyItem.ytenant_id || "0"
+            ytenant_id: historyItem.ytenant_id || "0",
+            showEntityTables: !!historyItem.showEntityTables
         };
         
         // 执行搜索
