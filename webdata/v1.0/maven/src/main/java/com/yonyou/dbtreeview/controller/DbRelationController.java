@@ -28,7 +28,7 @@ public class DbRelationController {
     private DbRelationService dbRelationService;
 
     /**
-     * 获取数据库表关联树形结构
+     * 获取数据库表关联树形结构（默认不包含实体表）
      *
      * @param request 包含环境、数据库名称、表单编码和数据库配置的请求
      * @return 树形结构数据
@@ -44,11 +44,38 @@ public class DbRelationController {
                     request.getDbName(),
                     request.getBillNo(),
                     request.getYtenant_id(),
-                    request.getDbConfig()
+                    request.getDbConfig(),
+                    false // 不包含实体表
             ));
         } catch (Exception e) {
             logger.error("获取数据库关联树失败", e);
             return ApiResponse.error("获取数据库关联树失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取数据库表关联树形结构（包含实体表）
+     *
+     * @param request 包含环境、数据库名称、表单编码和数据库配置的请求
+     * @return 树形结构数据
+     */
+    @PostMapping("/tree-with-entity")
+    public ApiResponse<DbTreeResponse> getDbRelationTreeWithEntity(@RequestBody DbRelationRequest request) {
+        logger.info("接收到获取包含实体表的数据库关联树请求: 环境={}, 数据库名={}, 表单编码={}, 租户ID={}", 
+                request.getEnvironment(), request.getDbName(), request.getBillNo(), request.getYtenant_id());
+        
+        try {
+            return ApiResponse.success(dbRelationService.getDbRelationTree(
+                    request.getEnvironment(),
+                    request.getDbName(),
+                    request.getBillNo(),
+                    request.getYtenant_id(),
+                    request.getDbConfig(),
+                    true // 包含实体表
+            ));
+        } catch (Exception e) {
+            logger.error("获取包含实体表的数据库关联树失败", e);
+            return ApiResponse.error("获取包含实体表的数据库关联树失败: " + e.getMessage());
         }
     }
 

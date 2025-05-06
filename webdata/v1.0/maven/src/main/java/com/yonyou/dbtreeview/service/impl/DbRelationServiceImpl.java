@@ -24,7 +24,7 @@ public class DbRelationServiceImpl implements DbRelationService {
     private static final Logger logger = LoggerFactory.getLogger(DbRelationServiceImpl.class);
     
     @Override
-    public DbTreeResponse getDbRelationTree(String environment, String dbName, String billNo, String ytenant_id, DbConfigDTO dbConfig) {
+    public DbTreeResponse getDbRelationTree(String environment, String dbName, String billNo, String ytenant_id, DbConfigDTO dbConfig, boolean showEntityTables) {
         Connection conn = null;
         
         try {
@@ -38,8 +38,15 @@ public class DbRelationServiceImpl implements DbRelationService {
                 // 保存billNo到根节点，使其易于传递
                 rootNode.setAttribute("cBillNo", billNo);
                 
-                // 添加billentity_base子节点
-                addBillEntityNodes(conn, rootNode, ytenant_id);
+                // 根据showEntityTables参数决定是否添加billentity_base子节点
+                if (showEntityTables) {
+                    // 添加billentity_base子节点
+                    addBillEntityNodes(conn, rootNode, ytenant_id);
+                }else{
+                    // 添加billtemplate_base子节点 - 直接关联到billentity_base
+                    String billId = rootNode.getId();
+                    addBillTemplateNodes(conn, rootNode, billId, billNo, ytenant_id,showEntityTables);
+                }
                 
                 // 添加pb_meta_filters子节点
                 addMetaFilterNodes(conn, rootNode, ytenant_id);
@@ -53,6 +60,13 @@ public class DbRelationServiceImpl implements DbRelationService {
             closeConnection(conn);
         }
     }
+    
+    // 为了保持向后兼容，保留原始方法，调用新方法并默认不显示实体表
+//    @Override
+//    public DbTreeResponse getDbRelationTree(String environment, String dbName, String billNo, String ytenant_id, DbConfigDTO dbConfig) {
+//        // 调用新方法，默认不显示实体表
+//        return getDbRelationTree(environment, dbName, billNo, ytenant_id, dbConfig, false);
+//    }
     
     @Override
     public TableDetailsResponse getTableDetails(String environment, String dbName, String tableName, String id, String ytenant_id, DbConfigDTO dbConfig) {
@@ -393,7 +407,7 @@ public class DbRelationServiceImpl implements DbRelationService {
                     parentNode.addChild(entityNode);
                     
                     // 添加billtemplate_base子节点 - 直接关联到billentity_base
-                    addBillTemplateNodes(conn, entityNode, billId, billNo, ytenant_id);
+                    addBillTemplateNodes(conn, entityNode, billId, billNo, ytenant_id,true);
                 }
             }
         }
@@ -402,7 +416,7 @@ public class DbRelationServiceImpl implements DbRelationService {
     /**
      * 添加billtemplate_base子节点
      */
-    private void addBillTemplateNodes(Connection conn, DbTreeNode parentNode, String billId, String billNo, String ytenant_id) throws SQLException {
+    private void addBillTemplateNodes(Connection conn, DbTreeNode parentNode, String billId, String billNo, String ytenant_id,boolean showEntityTable) throws SQLException {
         String sql = "SELECT id, cName FROM billtemplate_base WHERE iBillId = ? AND tenant_id = ?";
         
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -423,7 +437,7 @@ public class DbRelationServiceImpl implements DbRelationService {
 //                    parentNode.addChild(templateNode);
                     
                     // 添加billtplgroup_base子节点 - 作为billtemplate_base的子节点
-                    addBillTplGroupNodes(conn, templateNode, billId, billNo, ytenant_id ,parentNode);
+                    addBillTplGroupNodes(conn, templateNode, billId, billNo, ytenant_id ,parentNode,showEntityTable);
                 }
             }
         }
@@ -432,15 +446,21 @@ public class DbRelationServiceImpl implements DbRelationService {
     /**
      * 添加billtplgroup_base子节点
      */
-    private void addBillTplGroupNodes(Connection conn, DbTreeNode parentNode, String billId, String billNo, String ytenant_id,DbTreeNode entityNode) throws SQLException {
+    private void addBillTplGroupNodes(Connection conn, DbTreeNode parentNode, String billId, String billNo, String ytenant_id,DbTreeNode entityNode,boolean showEntityTable) throws SQLException {
         // 修改SQL查询，增加iParentId字段
         String sql = "SELECT id, ccode, cName, iParentId FROM billtplgroup_base WHERE iBillId = ? AND iTplId = ? AND iBillEntityId = ? AND tenant_id = ? ORDER BY iOrder";
-        
+        if (!showEntityTable){
+            sql = "SELECT id, ccode, cName, iParentId FROM billtplgroup_base WHERE iBillId = ? AND iTplId = ? AND tenant_id = ? ORDER BY iOrder";
+        }
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, billId);
             stmt.setString(2, parentNode.getId());
-            stmt.setString(3, String.valueOf(parentNode.getAttribute("iBillEntityId")));
-            stmt.setString(4, ytenant_id);
+            if (showEntityTable){
+                stmt.setString(3, String.valueOf(parentNode.getAttribute("iBillEntityId")));
+                stmt.setString(4, ytenant_id);
+            }else {
+                stmt.setString(3, ytenant_id);
+            }
             
             try (ResultSet rs = stmt.executeQuery()) {
                 boolean isExists = false;

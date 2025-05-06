@@ -20,9 +20,10 @@ public interface DbRelationService {
      * @param billNo 表单编码
      * @param ytenant_id 租户ID
      * @param dbConfig 数据库配置
+     * @param showEntityTables 是否显示实体表
      * @return 树形结构数据
      */
-    DbTreeResponse getDbRelationTree(String environment, String dbName, String billNo, String ytenant_id, DbConfigDTO dbConfig);
+    DbTreeResponse getDbRelationTree(String environment, String dbName, String billNo, String ytenant_id, DbConfigDTO dbConfig, boolean showEntityTables);
     
     /**
      * 获取表节点详细信息
