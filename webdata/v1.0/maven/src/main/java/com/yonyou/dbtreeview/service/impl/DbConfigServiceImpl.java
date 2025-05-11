@@ -23,7 +23,8 @@ import java.util.Map;
 public class DbConfigServiceImpl implements DbConfigService {
 
     private static final Logger logger = LoggerFactory.getLogger(DbConfigServiceImpl.class);
-    
+    @Value("${app.myself-config-file}")
+    private String myselfFilePath;
     /**
      * 配置文件路径
      */
@@ -106,6 +107,7 @@ public class DbConfigServiceImpl implements DbConfigService {
         // 尝试相对于JAR文件所在目录的路径
         try {
             String jarPath = DbConfigServiceImpl.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
+            logger.debug("尝试获取JAR文件路径: {}", jarPath);
             File jarFile = new File(jarPath);
             if (jarFile.isFile()) { // 确保是JAR文件
                 Path jarDirPath = Paths.get(jarFile.getParent(), configFilePath);
@@ -116,6 +118,7 @@ public class DbConfigServiceImpl implements DbConfigService {
             }
         } catch (Exception e) {
             logger.warn("无法确定JAR文件路径", e);
+            return Paths.get(myselfFilePath);
         }
         
         logger.warn("找不到配置文件，将使用默认路径: {}", path.toAbsolutePath());
