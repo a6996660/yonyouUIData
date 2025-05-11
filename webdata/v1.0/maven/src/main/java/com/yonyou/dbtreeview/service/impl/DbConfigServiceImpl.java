@@ -131,13 +131,13 @@ public class DbConfigServiceImpl implements DbConfigService {
         Map<String, DbConfigDTO> configs = new HashMap<>();
         
         // 测试环境默认配置
-        configs.put("test", new DbConfigDTO("localhost", "3306", "root", ""));
+        configs.put("test", new DbConfigDTO("dbproxy.diwork.com", "12368", "bip_yxy_serv", "hbvzOoHcocB2y9SFtV8iWDjY5DKLXIjn"));
         
         // 日常环境默认配置
-        configs.put("daily", new DbConfigDTO("localhost", "3306", "root", ""));
+        configs.put("daily", new DbConfigDTO("dbproxy.diwork.com", "12003", "ro_all_db", "eruij6g98_35"));
         
         // 预发环境默认配置
-        configs.put("pre", new DbConfigDTO("localhost", "3306", "root", ""));
+        configs.put("pre", new DbConfigDTO("dbproxy.diwork.com", "12108", "ro_db_all", "MbRWs9QRjjKAGbERXFaJcE8k6eDhbRMf"));
         
         return new DbConfigsDTO(configs);
     }
